@@ -346,4 +346,3 @@ if __name__ == "__main__":
             os.rmdir(test_output_dir)
             logger.info(f"Removed test output directory and its contents: {test_output_dir}")
         logger.info("Test cleanup complete.")
-```

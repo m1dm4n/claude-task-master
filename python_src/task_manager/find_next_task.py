@@ -275,4 +275,3 @@ if __name__ == "__main__":
     assert next_task_6 and next_task_6.get('id') == "1.2"
     
     logger.info("\nAll find_next_task_py tests completed.")
-```

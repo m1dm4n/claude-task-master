@@ -3,13 +3,14 @@ import os
 import pathlib
 import logging
 import re
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union, Set
 
 from pydantic import BaseModel, Field, ValidationError
 
 # Assuming ai_services_unified and config_manager are in the parent directory
 from ..ai_services_unified import AIService
 from ..config_manager import get_debug_flag, is_api_key_set, get_project_name # Import what's needed
+from .add_task import _truncate 
 
 # Placeholders
 # from .generate_task_files import generate_task_files_py
@@ -457,4 +458,4 @@ if __name__ == "__main__":
         logger.info(f"Removed dummy tasks file after tests: {dummy_tasks_file_for_update}")
     logger.info("\nAll update_task_by_id_py tests completed.")
 
-```
+

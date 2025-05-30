@@ -382,4 +382,3 @@ if __name__ == "__main__":
     if os.path.exists(dummy_tasks_file):
         os.remove(dummy_tasks_file)
     print("\n\nList tasks tests complete.")
-```

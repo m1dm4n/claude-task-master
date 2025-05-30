@@ -307,4 +307,3 @@ if __name__ == "__main__":
         logger.info(f"Removed dummy tasks file after tests: {dummy_tasks_file_for_update_sub}")
     logger.info("\nAll update_subtask_by_id_py tests completed.")
 
-```

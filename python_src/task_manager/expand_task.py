@@ -474,4 +474,3 @@ if __name__ == "__main__":
         logger.info(f"Removed dummy tasks file after tests: {dummy_tasks_file}")
     logger.info("\nAll expand_task_py tests completed.")
 
-```

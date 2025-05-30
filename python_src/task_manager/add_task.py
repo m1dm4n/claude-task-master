@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field
 
 # Assuming ai_services_unified and config_manager are in the parent directory
+from .list_tasks import _truncate
 from ..ai_services_unified import AIService
 from ..config_manager import get_default_priority, get_project_name # Import what's needed
 
@@ -386,4 +387,3 @@ if __name__ == "__main__":
         os.remove(dummy_tasks_file)
         logger.info(f"Removed dummy tasks file after tests: {dummy_tasks_file}")
     logger.info("\nAll add_task_py tests completed.")
-```

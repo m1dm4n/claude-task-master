@@ -11,6 +11,19 @@ from ..config_manager import get_debug_flag, get_project_name # Import what's ne
 
 logger = logging.getLogger(__name__)
 
+
+def _write_json_file(file_path: str, data: Dict[str, Any]) -> bool:
+    try:
+        parent_dir = pathlib.Path(file_path).parent
+        if not parent_dir.exists():
+            parent_dir.mkdir(parents=True, exist_ok=True)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"Error writing JSON to file {file_path}: {e}")
+        return False
+    
 # --- Helper for JSON read/write (can be moved to utils.py later) ---
 def _read_json_file(file_path: str) -> Optional[Dict[str, Any]]:
     try:
@@ -355,4 +368,3 @@ if __name__ == "__main__":
     import asyncio
     asyncio.run(main_expand_all_tasks_test_run())
 
-```
