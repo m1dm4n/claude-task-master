@@ -3,22 +3,43 @@ name = "app"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "google-labs-jules[bot]",email = "161369871+google-labs-jules[bot]@users.noreply.github.com"}
+    {name = "m1dm4n",email = "92845822+m1dm4n@users.noreply.github.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.10,<4.0"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "langchain-google-genai (>=2.1.5,<3.0.0)",
     "langchain-openai (>=0.3.18,<0.4.0)",
     "langgraph (>=0.4.7,<0.5.0)",
     "python-dotenv (>=1.1.0,<2.0.0)",
-    "rich (>=14.0.0,<15.0.0)"
+    "rich (>=14.0.0,<15.0.0)",
+    "pydantic (>=2.0.0)",
+    "pydantic-ai (>=0.1.0)",
+    "logfire (>=0.1.0)",
+    "google-genai (>=0.1.0)",
+    "openai (>=1.82.1,<2.0.0)",
+    "anthropic (>=0.52.1,<0.53.0)",
+    "fastmcp (>=2.5.2,<3.0.0)",
+    "typer[all] (>=0.9.0)",
+    "pytest-asyncio (>=1.0.0,<2.0.0)"
 ]
 
-[tool.poetry]
-package-mode = false 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-mock = "^3.12.0"
+pytest-asyncio = "^1.0.0"
 
+[tool.poetry]
+package-mode = true
+packages = [{include = "src"}]
+
+
+[tool.poetry.scripts]
+task-master = "src.cli:app"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

@@ -1,32 +1,23 @@
 {
-	"models": {
-		"main": {
-			"provider": "anthropic",
-			"modelId": "claude-sonnet-4-20250514",
-			"maxTokens": 50000,
-			"temperature": 0.2
-		},
-		"research": {
-			"provider": "perplexity",
-			"modelId": "sonar-pro",
-			"maxTokens": 8700,
-			"temperature": 0.1
-		},
-		"fallback": {
-			"provider": "anthropic",
-			"modelId": "claude-3-7-sonnet-20250219",
-			"maxTokens": 128000,
-			"temperature": 0.2
-		}
-	},
-	"global": {
-		"logLevel": "info",
-		"debug": false,
-		"defaultSubtasks": 5,
-		"defaultPriority": "medium",
-		"projectName": "Taskmaster",
-		"ollamaBaseUrl": "http://localhost:11434/api",
-		"userId": "1234567890",
-		"azureOpenaiBaseUrl": "https://your-endpoint.openai.azure.com/"
-	}
+  "main_model": {
+    "model_name": "gemini-2.0-flash-exp",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "research_model": {
+    "model_name": "gemini-2.0-flash-exp",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "fallback_model": {
+    "model_name": "gemini-1.5-flash",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "project_plan_file": "project_plan.json",
+  "tasks_dir": "tasks",
+  "default_prd_filename": "prd.md"
 }

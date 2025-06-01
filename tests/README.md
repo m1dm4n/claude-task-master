@@ -1,63 +1,47 @@
-# Task Master Test Suite
+# AI Agent Tests
 
-This directory contains tests for the Task Master CLI. The tests are organized into different categories to ensure comprehensive test coverage.
+This directory contains unit and integration tests for the Python AI agent.
 
-## Test Structure
+## Setup
 
-- `unit/`: Unit tests for individual functions and components
-- `integration/`: Integration tests for testing interactions between components
-- `e2e/`: End-to-end tests for testing complete workflows
-- `fixtures/`: Test fixtures and sample data
+1.  **Install Dependencies**:
+    Ensure you have Poetry installed. From the project root directory (`claude-task-master`), install the main and development dependencies:
+    ```bash
+    poetry install
+    ```
 
-## Running Tests
+## Running Unit Tests
 
-To run all tests:
+Unit tests focus on individual components in isolation and do not require API keys.
 
+To run all unit tests:
 ```bash
-npm test
+pytest tests/unit
 ```
 
-To run tests in watch mode (for development):
+## Running Integration Tests
 
+Integration tests verify interactions between components, particularly those involving the Google Gemini LLM.
+
+**Prerequisites**:
+*   You MUST have a valid `GOOGLE_API_KEY` environment variable set.
+    ```bash
+    export GOOGLE_API_KEY="your_actual_google_api_key"
+    ```
+    Alternatively, you can add it to a `.env` file in the project root.
+
+To run all integration tests:
 ```bash
-npm run test:watch
+pytest tests/integration
 ```
 
-To run tests with coverage reporting:
+If the `GOOGLE_API_KEY` is not set, integration tests will be skipped.
 
-```bash
-npm run test:coverage
-```
+## Contributing
 
-## Testing Approach
-
-### Unit Tests
-
-Unit tests focus on testing individual functions and components in isolation. These tests should be fast and should mock external dependencies.
-
-### Integration Tests
-
-Integration tests focus on testing interactions between components. These tests ensure that components work together correctly.
-
-### End-to-End Tests
-
-End-to-end tests focus on testing complete workflows from a user's perspective. These tests ensure that the CLI works correctly as a whole.
-
-## Test Fixtures
-
-Test fixtures provide sample data for tests. Fixtures should be small, focused, and representative of real-world data.
-
-## Mocking
-
-For external dependencies like file system operations and API calls, we use mocking to isolate the code being tested.
-
-- File system operations: Use `mock-fs` to mock the file system
-- API calls: Use Jest's mocking capabilities to mock API responses
-
-## Test Coverage
-
-We aim for at least 80% test coverage for all code paths. Coverage reports can be generated with:
-
-```bash
-npm run test:coverage
-```
+When adding new tests:
+*   Place unit tests in `tests/unit/`.
+*   Place integration tests in `tests/integration/`.
+*   Follow the `test_*.py` naming convention for test files.
+*   Ensure unit tests mock external dependencies (API calls, file system).
+*   Ensure integration tests clean up any created artifacts (e.g., using `tmp_path` fixture for files).
