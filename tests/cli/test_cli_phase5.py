@@ -8,6 +8,7 @@ from typing import Optional, List, Union # Added Union
 
 from src.cli import app
 from src.data_models import Task, TaskStatus, TaskPriority, ProjectPlan, Subtask
+from tests.cli.utils import requires_api_key
 
 runner = CliRunner()
 
@@ -47,7 +48,7 @@ def format_datetime_for_cli(dt_input: Optional[Union[datetime, date, str]], cli_
 
 
 # --- Test Cases for 'task-master next' ---
-
+@requires_api_key()
 def test_next_command_with_actionable_task(cli_test_workspace):
     # Arrange: Create a plan. The goal is to have a clearly actionable PENDING task.
     plan_goal = "Setup a simple project: Task A (PENDING) depends on Task B (to be COMPLETED)"
@@ -56,7 +57,7 @@ def test_next_command_with_actionable_task(cli_test_workspace):
     plan_result = runner.invoke(app, ['plan', plan_goal, '--title', plan_title])
     assert plan_result.exit_code == 0, f"Initial plan creation failed: {plan_result.stdout}"
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Plan file not found after initial plan."
 
     with open(plan_file_path, 'r') as f:
@@ -86,17 +87,19 @@ def test_next_command_with_actionable_task(cli_test_workspace):
             if can_setup_dependency:
                 break
     
+    actionable_task_model: Optional[Task] = None
     if not (task_a_id and task_b_id):
         # Fallback: Create a simpler plan with just one task, assume it's PENDING and actionable
         plan_result_simple = runner.invoke(app, ['plan', "One single actionable task", '--title', "Simple Actionable Plan"])
         assert plan_result_simple.exit_code == 0, f"Simple plan creation failed: {plan_result_simple.stdout}"
+        
+        # Reload plan to get the task from the simple plan
         with open(plan_file_path, 'r') as f:
             simple_plan_data = json.load(f)
         simple_project_plan = ProjectPlan(**simple_plan_data)
+        
         if simple_project_plan.tasks and simple_project_plan.tasks[0].status == TaskStatus.PENDING and not simple_project_plan.tasks[0].dependencies:
             actionable_task_model = simple_project_plan.tasks[0]
-        else:
-            pytest.skip("Could not reliably set up a single actionable PENDING task.")
     else:
         # Set Task B to COMPLETED
         set_status_result = runner.invoke(app, ["set-status", "--id", str(task_b_id), "--status", "COMPLETED"])
@@ -107,12 +110,9 @@ def test_next_command_with_actionable_task(cli_test_workspace):
             updated_plan_data = json.load(f)
         updated_project_plan = ProjectPlan(**updated_plan_data)
         actionable_task_model = next((t for t in updated_project_plan.tasks if t.id == task_a_id), None)
-        if not actionable_task_model or actionable_task_model.status != TaskStatus.PENDING:
-             pytest.skip("Task A is not PENDING after setting up dependencies, or not found.")
-
-
-    if not actionable_task_model:
-         pytest.skip("Failed to identify or set up an actionable task.")
+        
+    if not actionable_task_model or actionable_task_model.status != TaskStatus.PENDING:
+         pytest.skip("Could not reliably set up a single actionable PENDING task after all attempts.")
 
     # Act
     result = runner.invoke(app, ["next"])
@@ -146,6 +146,7 @@ def test_next_command_with_actionable_task(cli_test_workspace):
     assert f"Due Date: {cli_due_date_str}" in result.stdout
 
 
+@requires_api_key()
 def test_next_command_with_actionable_task_no_dependencies_no_due_date(cli_test_workspace):
     # Arrange: Create a plan likely to have a simple PENDING task.
     plan_goal = "A single task, no dependencies, no due date"
@@ -153,7 +154,7 @@ def test_next_command_with_actionable_task_no_dependencies_no_due_date(cli_test_
     plan_result = runner.invoke(app, ['plan', plan_goal, '--title', plan_title])
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists()
     with open(plan_file_path, 'r') as f:
         plan_data = json.load(f)
@@ -199,6 +200,7 @@ def test_next_command_with_actionable_task_no_dependencies_no_due_date(cli_test_
     assert "Due Date: N/A" in result.stdout
 
 
+@requires_api_key()
 def test_next_command_no_actionable_task(cli_test_workspace):
     # Arrange: Create a plan, then ensure all tasks are COMPLETED.
     plan_goal = "Plan to test no actionable tasks scenario"
@@ -206,7 +208,7 @@ def test_next_command_no_actionable_task(cli_test_workspace):
     plan_result = runner.invoke(app, ['plan', plan_goal, '--title', plan_title])
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists()
     with open(plan_file_path, 'r') as f:
         plan_data = json.load(f)

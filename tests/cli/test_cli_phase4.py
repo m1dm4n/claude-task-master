@@ -7,11 +7,13 @@ from pathlib import Path # Added for path manipulation
 
 from src.cli import app
 from src.data_models import TaskStatus, ProjectPlan # Added ProjectPlan for type hinting
+from tests.cli.utils import requires_api_key
 
 runner = CliRunner()
 
 # --- Test Cases for 'task-master set-status' ---
 
+@requires_api_key()
 def test_set_status_single_id_success(cli_test_workspace):
     # Arrange: Create a plan and get a task ID
     plan_goal = "Simple test plan for status update"
@@ -20,7 +22,7 @@ def test_set_status_single_id_success(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found after 'plan' command."
 
     with open(plan_file_path, 'r') as f:
@@ -55,6 +57,8 @@ def test_set_status_single_id_success(cli_test_workspace):
             break
     assert updated_task_found, f"Task {item_id_to_update} not found in plan after status update."
 
+
+@requires_api_key()
 def test_set_status_multiple_ids_success(cli_test_workspace):
     # Arrange: Create a plan and get at least two task IDs
     plan_goal = "Plan with multiple tasks for status update"
@@ -64,7 +68,7 @@ def test_set_status_multiple_ids_success(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -103,6 +107,8 @@ def test_set_status_multiple_ids_success(cli_test_workspace):
     assert updated_count == len(ids_to_update), \
         f"Expected {len(ids_to_update)} tasks to be updated, but found {updated_count}."
 
+
+@requires_api_key()
 def test_set_status_case_insensitive_status_string(cli_test_workspace):
     # Arrange: Create a plan and get a task ID
     plan_goal = "Plan for case-insensitive status test"
@@ -111,7 +117,7 @@ def test_set_status_case_insensitive_status_string(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -147,6 +153,8 @@ def test_set_status_case_insensitive_status_string(cli_test_workspace):
             break
     assert updated_task_found, f"Task {item_id_to_update} not found in plan after status update."
 
+
+@requires_api_key()
 def test_set_status_invalid_uuid_format(cli_test_workspace):
     # Arrange: Create a plan and get a valid task ID
     plan_goal = "Plan for invalid UUID test"
@@ -155,7 +163,7 @@ def test_set_status_invalid_uuid_format(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -204,6 +212,7 @@ def test_set_status_invalid_uuid_format(cli_test_workspace):
             break
     assert updated_task_found, f"Task {valid_id_to_update} not found in plan after status update."
 
+
 def test_set_status_all_invalid_uuid_formats(cli_test_workspace): # mock_agent_core removed
     invalid_id1 = "totally-invalid-uuid"
     invalid_id2 = "another-bad-one"
@@ -234,7 +243,7 @@ def test_set_status_non_existent_id_agent_handles(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -273,6 +282,8 @@ def test_set_status_non_existent_id_agent_handles(cli_test_workspace):
             break
     assert updated_task_found, f"Task {existent_id_to_update} not found in plan after status update."
 
+
+@requires_api_key()
 def test_set_status_invalid_status_string(cli_test_workspace):
     # Arrange: Create a plan and get a task ID
     plan_goal = "Plan for invalid status test"
@@ -281,7 +292,7 @@ def test_set_status_invalid_status_string(cli_test_workspace):
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -317,16 +328,19 @@ def test_set_status_invalid_status_string(cli_test_workspace):
             break
     assert task_found, f"Task {item_id_to_attempt_update} not found in plan after invalid status update attempt."
 
+
+@requires_api_key()
 def test_set_status_some_succeed_some_fail(cli_test_workspace):
     # Arrange: Create a plan with at least two tasks
-    plan_goal = "Plan for partial success/failure status update"
-    plan_title = "Partial Update Plan"
+    plan_title = "Test Plan with Mixed Status Update"
+    plan_goal = "Achieve mixed status updates"
     # Ask for more tasks to ensure we have enough
-    plan_result = runner.invoke(app, ['plan', plan_goal, '--title', plan_title]) # Removed --instructions
+    plan_result = runner.invoke(
+        app, ['plan', plan_goal, '--title', plan_title, "--num-tasks", 2])
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
 
     with open(plan_file_path, 'r') as f:
@@ -385,6 +399,8 @@ def test_set_status_some_succeed_some_fail(cli_test_workspace):
                 f"Task {task_id_key} status not updated to {new_status_enum}. Found: {task_after_update.status}"
         # No 'else' needed as this test expects existent IDs to succeed.
 
+
+@requires_api_key()
 def test_set_status_all_fail_agent_side(cli_test_workspace): # mock_agent_core removed
     # Arrange: Create a plan (so the workspace is set up and db exists)
     # but we will use IDs not present in this plan.
@@ -394,7 +410,7 @@ def test_set_status_all_fail_agent_side(cli_test_workspace): # mock_agent_core r
     assert plan_result.exit_code == 0, f"Plan creation failed: {plan_result.stdout}"
     assert "✅ Project plan" in plan_result.stdout
 
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert plan_file_path.exists(), "Project plan JSON file not found."
     
     # Keep a copy of the original plan data to ensure it's not modified
@@ -432,7 +448,7 @@ def test_set_status_no_ids_provided(cli_test_workspace): # mock_agent_core remov
     assert "Missing option '--id'" in result.stderr, f"Expected '--id' missing error in stderr. Stderr: {result.stderr}"
 
     # Ensure no plan file was created or modified
-    plan_file_path = cli_test_workspace / "test_project_plan.json"
+    plan_file_path = cli_test_workspace / "project_plan.json"
     assert not plan_file_path.exists(), \
         "Plan file should not exist or be modified when --id option is missing."
 

@@ -25,6 +25,12 @@ class TaskPriority(str, Enum):
     CRITICAL = "CRITICAL"
 
 
+class ItemType(str, Enum):
+    """Enumeration for the type of an item (Task or Subtask)."""
+    TASK = "TASK"
+    SUBTASK = "SUBTASK"
+
+
 class Subtask(BaseModel):
     """Represents a subtask within a Task Master task."""
     id: UUID = Field(default_factory=uuid4,

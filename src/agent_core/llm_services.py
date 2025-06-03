@@ -10,16 +10,17 @@ from dataclasses import dataclass
 
 import logfire
 
-from pydantic import SecretStr
+from pydantic_ai import tools as pydantic_ai_tools
 from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
+from google import genai
+
+from src.agent_prompts import MAIN_AGENT_SYSTEM_PROMPT
 
 from ..config_manager import ConfigManager
 from ..data_models import ModelConfig, ProjectPlan
-from ..agent_prompts import (
-    PLAN_PROJECT_PROMPT_INSTRUCTION,
-    PRD_TO_PROJECT_PLAN_PROMPT)
 
 
 @dataclass
@@ -60,6 +61,7 @@ class LLMService:
         key_name = f"{provider_name.upper()}_API_KEY"
         return os.getenv(key_name)
 
+    @lru_cache(maxsize=1)
     def get_main_agent(self) -> Agent:
         """
         Creates and returns the main agent using the main model configuration.
@@ -105,10 +107,12 @@ class LLMService:
 
         return Agent(
             model=llm_model_instance,
-            retries=1,
+            retries=3,
+            system_prompt=MAIN_AGENT_SYSTEM_PROMPT,
             deps_type=AgentDependencies
         )
 
+    @lru_cache(maxsize=1)
     def get_research_agent(self) -> Agent:
         """
         Creates and returns the research agent using the research model configuration.
@@ -120,14 +124,8 @@ class LLMService:
         research_model_config: Optional[ModelConfig] = self.config_manager.get_model_config(
             "research")
         if not research_model_config:
-            logfire.warn(
-                "Research model configuration not found, falling back to main model for research agent.")
-            research_model_config = self.config_manager.get_model_config(
-                "main")
-
-        if not research_model_config:
             raise RuntimeError(
-                "No research or main model configuration found for research agent.")
+                "Research model configuration not found. Please set up a research model in the configuration to use the research agent.")
 
         provider_name = research_model_config.provider
         if provider_name != 'google':
@@ -159,73 +157,93 @@ class LLMService:
 
         return Agent(
             model=llm_model_instance,
-            retries=1,
-            deps_type=AgentDependencies
+            retries=2,
+            system_prompt=MAIN_AGENT_SYSTEM_PROMPT,
+            deps_type=AgentDependencies,
         )
 
-    async def generate_plan_from_text(self, text_content: str = "", project_goal: str = "", num_tasks: Optional[int] = None, model_type: Literal["main", "research"] = "main") -> ProjectPlan:
+    async def generate_text(self, prompt: str, model_type: Literal["main", "research"] = "main", **kwargs: Dict[str, Any]) -> str:
         """
-        Generates a project plan from text content (e.g., PRD) or a simple project goal.
+        Generates text using the specified model type.
 
         Args:
-            text_content: The full text content to parse (e.g., PRD, detailed description).
-                          If provided, takes precedence over project_goal for prompt selection.
-            project_goal: A concise string representing the overall project goal. Used if text_content is empty.
-            num_tasks: Optional. The desired number of main tasks in the plan.
+            prompt: The input prompt to generate text from.
             model_type: "main" or "research" to select which model/agent configuration to use.
 
         Returns:
-            ProjectPlan: A structured project plan.
+            str: The generated text response.
         """
+        output_type = kwargs.pop("output_type", None)
         logfire.info(
-            f"Generating project plan from text. Model type: {model_type}")
+            f"Generating text with output type: {output_type.__name__ if output_type else 'String'}")
 
-        current_agent = self.get_main_agent(
-        ) if model_type == "main" else self.get_research_agent()
-
-        # Determine which base prompt and user input to use
-        if text_content:
-            base_prompt = PRD_TO_PROJECT_PLAN_PROMPT
-            user_input_content = f"PRD Content:\n{text_content}\n\nProject Goal (for context): {project_goal}"
-        elif project_goal:
-            base_prompt = PLAN_PROJECT_PROMPT_INSTRUCTION
-            user_input_content = f"Project Goal: {project_goal}"
-        else:
-            raise ValueError(
-                "Either 'text_content' or 'project_goal' must be provided.")
-
-        if num_tasks is not None:
-            user_input_content += f"\n\nFocus on generating approximately {num_tasks} main tasks."
-
-        # Construct the final prompt for the agent
-        full_prompt_for_agent = (
-            f"{base_prompt}\n\n"
-            f"User Request:\n{user_input_content}\n\n"
-        )
-        logfire.debug(
-            f"Attempting to generate ProjectPlan with prompt (first 500 chars): {full_prompt_for_agent[:500]}")
+        current_agent = self.get_main_agent() if model_type == "main" else self.get_research_agent()
+        logfire.info("Starting text generation with agent: "
+                    f"{current_agent.model.model_name} ({model_type})")
 
         try:
-            # The agent.run method with output_type=ProjectPlan is critical here.
-            # It instructs Pydantic AI to parse the LLM's response into a ProjectPlan
-            # object and validate it against the Pydantic schema.
-            result = await current_agent.run(full_prompt_for_agent, output_type=ProjectPlan)
+            result = await current_agent.run(
+                prompt,
+                output_type=output_type,  # Use the specified output type
+                **kwargs
+            )
 
             if not result or not result.output:
                 logfire.error(
-                    "Agent.run returned None or empty result.output for ProjectPlan generation.")
-                raise ValueError(
-                    "Agent did not return a valid ProjectPlan response.")
+                    "Agent.run returned None or empty result.output for text generation.")
+                raise ValueError("Agent did not return a valid response.")
+            # Log first 100 chars
+            logfire.debug(f"Generated  output successfully: {result}")
 
-            project_plan: ProjectPlan = result.output
+            generated_text = result.output
 
-            logfire.info(
-                "Successfully generated and validated ProjectPlan using pydantic-ai.",
-                project_title=project_plan.project_title,
-                num_tasks_generated=len(project_plan.tasks)
-            )
-            return project_plan
+            return generated_text
         except Exception as e:
-            logfire.error(
-                f"Failed to generate or validate ProjectPlan: {e}", exc_info=True)
-            raise RuntimeError(f"Failed to generate project plan: {e}") from e
+            logfire.error(f"Failed to generate text: {e}", exc_info=True)
+            raise RuntimeError(f"Text generation failed: {e}") from e
+
+    async def generate_text_with_research_tool(self, prompt: str, tools: List[pydantic_ai_tools.Tool], **kwargs: Dict[str, Any]) -> str:
+        """
+        Generates text using the specified model type.
+
+        Args:
+            prompt: The input prompt to generate text from.
+            model_type: "main" or "research" to select which model/agent configuration to use.
+
+        Returns:
+            str: The generated text response.
+        """
+        logfire.info(
+            f"Starting research with tools: {prompt[:100]}...")  # Log first 100 chars of prompt
+
+        current_agent = self.get_research_agent()
+        for tool in tools:
+            if not isinstance(tool, pydantic_ai_tools.Tool):
+                logfire.error(
+                    f"Invalid tool type: {type(tool)}. Expected pydantic_ai_tools.Tool.")
+                raise TypeError(
+                    f"Invalid tool type: {type(tool)}. Expected pydantic_ai_tools.Tool.")
+            else:
+                current_agent._register_tool(tool)
+                logfire.debug(f"Registered research tool: {tool}")
+
+        logfire.debug(f"Using agent: {current_agent}")
+        try:
+            result = await current_agent.run(
+                prompt,
+                **kwargs
+            )
+
+            if not result or not result.output:
+                logfire.error(
+                    "Agent.run returned None or empty result.output for text generation.")
+                raise ValueError("Agent did not return a valid response.")
+            # Log first 100 chars
+            logfire.debug(f"Generated  output successfully: {result}")
+
+            generated_text = result.output
+
+            return generated_text
+        except Exception as e:
+            logfire.error(f"Failed to generate text: {e}", exc_info=True)
+            raise RuntimeError(f"Text generation failed: {e}") from e

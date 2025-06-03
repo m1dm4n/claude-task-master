@@ -5,36 +5,32 @@ from datetime import datetime
 
 # Assuming data_models.py and agent_core.py are in a package 'src'
 # and tests are run from the project root.
-from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority, ModelConfig
+from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority, ModelConfig, AppConfig
 from src.agent_core.main import DevTaskAIAssistant
 from src.config_manager import ConfigManager # Keep for spec, but will be patched
-from src.persistence_manager import PersistenceManager # Keep for spec, but will be patched
 from src.agent_core.llm_services import LLMService # Keep for spec, but will be patched
 
 class TestAgentCorePhase5(unittest.TestCase):
 
     @patch('src.agent_core.llm_manager.LLMService')      # Patched where LLMManager imports it
-    @patch('src.agent_core.project_manager.PersistenceManager') # Patched where ProjectManager imports it
     @patch('src.agent_core.main.ConfigManager')         # Patched where DevTaskAIAssistant (main) imports it
-    def setUp(self, MockConfigManager, MockPersistenceManager, MockLLMService): # Args match patch order (bottom-up)
+    def setUp(self, MockConfigManager, MockLLMService): # Args match patch order (bottom-up)
         # These are the mock *classes*. We need to configure their return_values (instances).
         self.mock_config_manager_instance = MockConfigManager.return_value
-        self.mock_persistence_manager_instance = MockPersistenceManager.return_value
         self.mock_llm_service_instance = MockLLMService.return_value
 
-        # Configure mock ConfigManager instance
-        mock_app_config = MagicMock(name="AppConfigMock")
-        mock_app_config.project_plan_filename = "project_plan.json"
-        
+        # Configure mock ConfigManager instance with proper AppConfig
         mock_main_model_cfg = ModelConfig(model_name="mock-main", provider="mock")
         mock_research_model_cfg = ModelConfig(model_name="mock-research", provider="mock")
         mock_fallback_model_cfg = ModelConfig(model_name="mock-fallback", provider="mock")
 
-        mock_app_config.model_configs = {
-            "main": mock_main_model_cfg,
-            "research": mock_research_model_cfg,
-            "fallback": mock_fallback_model_cfg,
-        }
+        mock_app_config = AppConfig(
+            main_model=mock_main_model_cfg,
+            research_model=mock_research_model_cfg,
+            fallback_model=mock_fallback_model_cfg,
+            project_plan_file="project_plan.json",
+            tasks_dir="tasks"
+        )
         self.mock_config_manager_instance.config = mock_app_config
         self.mock_config_manager_instance.load_or_initialize_config.return_value = mock_app_config
         
@@ -49,10 +45,7 @@ class TestAgentCorePhase5(unittest.TestCase):
         }
 
 
-        # Configure mock PersistenceManager instance
-        self.mock_persistence_manager_instance.load_project_plan.return_value = ProjectPlan(project_title="Mocked Test Plan", overall_goal="Mocked overall goal", tasks=[])
-        self.mock_persistence_manager_instance._get_db_connection.return_value = MagicMock(name="DBConnectionMock")
-        self.mock_persistence_manager_instance._init_database.return_value = None # Prevent DB init attempts
+        # PersistenceManager no longer used - using JSON-based persistence
 
         # Configure mock LLMService instance
         self.mock_main_agent_on_llm_service = MagicMock(name="MainAgentOnLLMMock")
@@ -60,7 +53,7 @@ class TestAgentCorePhase5(unittest.TestCase):
         
         # Now instantiate DevTaskAIAssistant. It will use the mocked versions of
         # ConfigManager, PersistenceManager, and LLMService due to the @patch decorators.
-        self.agent = DevTaskAIAssistant(workspace_path="dummy_workspace_for_test")
+        self.agent = DevTaskAIAssistant(workspace_path="dummy_workspace")
         
         # self.agent.logger = MagicMock() # logfire calls are not directly on this instance's logger
 

@@ -40,7 +40,7 @@ class PlanningManager:
         logfire.info(f"Planning project from goal: {project_goal}")
         
         try:
-            project_plan = await self.llm_manager.llm_service.generate_plan_from_text(
+            project_plan = await self.llm_manager.generate_plan_from_text(
                 text_content=None, # No PRD content, just the goal
                 project_goal=project_goal,
                 num_tasks=num_tasks,
@@ -95,7 +95,7 @@ class PlanningManager:
             # or even use a dedicated LLM call just for that.
             derived_project_goal = project_title if project_title != "New Project" else prd_file_path.stem.replace('_', ' ').title()
             
-            project_plan = await self.llm_manager.llm_service.generate_plan_from_text(
+            project_plan = await self.llm_manager.generate_plan_from_text(
                 text_content=prd_content,
                 project_goal=derived_project_goal,
                 num_tasks=num_tasks,

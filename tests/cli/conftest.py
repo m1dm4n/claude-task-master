@@ -1,63 +1,123 @@
 import pytest
-import os
-import shutil
 import tempfile
-from pathlib import Path
+import os
 import json
+from pathlib import Path
+from datetime import datetime, timezone
+from uuid import uuid4
 
-@pytest.fixture(scope="function")
+from src.data_models import ProjectPlan, Task, TaskStatus, TaskPriority
+
+
+@pytest.fixture
 def cli_test_workspace():
-    """Create a temporary workspace for CLI tests."""
-    temp_dir = tempfile.mkdtemp(prefix="taskmaster_cli_test_")
-    original_cwd = Path.cwd()
-    
-    # Create a dummy .taskmasterconfig file
-    # Define what AppConfig expects directly.
-    # ConfigManager.load_or_initialize_config will pass this dict to AppConfig.model_validate()
-    # AppConfig fields: main_model, research_model, fallback_model,
-    #                   project_plan_file, tasks_dir, default_prd_filename
-    config_data = {
-        "main_model": {
-            # Updated to a standard Google model
-            "model_name": "gemini-2.0-flash",
-            "provider": "google",
-            "base_url": None
-        },
-        # research_model and fallback_model are optional in AppConfig.
-        # If we want to test with them, they should be structured similarly.
-        # For now, let's omit them to rely on AppConfig's defaults if any, or None.
-        "research_model": {
-            # Updated to a standard Google model for research
-            "model_name": "gemini-2.5-flash-preview-05-20",
-            "provider": "google",
-            "base_url": None
-        },
-        "project_plan_file": "test_project_plan.json", # Matches AppConfig field
-        "tasks_dir": "tasks",                           # Matches AppConfig field
-        "default_prd_filename": "prd.md"                # Matches AppConfig field
+    """
+    Creates a temporary workspace directory for CLI tests and sets up
+    a production-ready configuration for functional testing with real LLM services.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
         
-        # Fields like db_path, project_plans_dir, current_project_id, log_level,
-        # llm_providers, default_llm_provider, and the nested 'models' structure
-        # are NOT part of AppConfig pydantic model.
-        # The PersistenceManager uses its own default for db_path (.tasks/tasks.db).
-        # Other settings might be handled by ConfigManager instance vars or other mechanisms.
-    }
-    config_file_path = Path(temp_dir) / ".taskmasterconfig"
-    with open(config_file_path, 'w') as f:
-        json.dump(config_data, f, indent=4)
+        # Create a production-ready .taskmasterconfig
+        # Use actual working model configurations
+        config_content = """{
+  "main_model": {
+    "model_name": "gemini-2.0-flash",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "research_model": {
+    "model_name": "gemini-2.0-flash-thinking-exp",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "fallback_model": {
+    "model_name": "gemini-2.0-flash",
+    "provider": "google",
+    "api_key": null,
+    "base_url": null
+  },
+  "project_plan_file": "project_plan.json",
+  "tasks_dir": "tasks",
+  "default_prd_filename": "prd.md"
+}"""
+        config_file = tmp_path / ".taskmasterconfig"
+        config_file.write_text(config_content)
+
+        # Create tasks directory
+        tasks_dir = tmp_path / "tasks"
+        tasks_dir.mkdir(exist_ok=True)
+
+        # Set the current working directory to the temporary one
+        original_cwd = os.getcwd()
+        os.chdir(tmp_path)
         
-    with open(Path(temp_dir) / "prd.md", 'w') as f:
-        f.write("# Product Requirements Document\n\nThis is a test PRD file.")
-        f.write("\n\n## Requirements\n\n- Create calulator app\n- Support basic arithmetic operations")
+        try:
+            yield tmp_path
+        finally:
+            # Restore original working directory
+            os.chdir(original_cwd)
 
-    # Create project_plans_dir if it doesn't exist (it should be created by agent if needed)
-    # os.makedirs(Path(temp_dir) / "project_plans", exist_ok=True)
 
-    os.chdir(temp_dir)
-    yield Path(temp_dir)  # Provide the path to the temporary workspace
-    
-    os.chdir(original_cwd)
-    try:
-        shutil.rmtree(temp_dir)
-    except OSError as e:
-        print(f"Error removing temporary directory {temp_dir}: {e}")
+@pytest.fixture
+def sample_project_plan():
+    """
+    Creates a sample project plan for testing.
+    """
+    return ProjectPlan(
+        project_title="Test Project",
+        overall_goal="This is a test project for CLI functional testing.",
+        tasks=[
+            Task(
+                id=uuid4(),
+                title="Task 1: Setup",
+                description="Set up the project environment",
+                status=TaskStatus.PENDING,
+                priority=TaskPriority.HIGH,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            ),
+            Task(
+                id=uuid4(),
+                title="Task 2: Development",
+                description="Implement core features",
+                status=TaskStatus.IN_PROGRESS,
+                priority=TaskPriority.MEDIUM,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            ),
+            Task(
+                id=uuid4(),
+                title="Task 3: Testing",
+                description="Test the implementation",
+                status=TaskStatus.COMPLETED,
+                priority=TaskPriority.LOW,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+        ]
+    )
+
+
+def setup_project_plan_file(workspace_path: Path, project_plan: ProjectPlan):
+    """
+    Helper function to set up a project plan JSON file in the workspace.
+    """
+    plan_file = workspace_path / "project_plan.json"
+    with open(plan_file, 'w') as f:
+        f.write(project_plan.model_dump_json(indent=2, exclude_none=True))
+    return plan_file
+
+
+def load_project_plan_file(workspace_path: Path) -> ProjectPlan:
+    """
+    Helper function to load a project plan from the workspace.
+    """
+    plan_file = workspace_path / "project_plan.json"
+    if plan_file.exists():
+        with open(plan_file, 'r') as f:
+            data = json.load(f)
+            return ProjectPlan.model_validate(data)
+    return None

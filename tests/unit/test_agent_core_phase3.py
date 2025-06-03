@@ -10,7 +10,8 @@ from uuid import uuid4, UUID
 import tempfile
 
 from src.agent_core import DevTaskAIAssistant
-from src.data_models import ProjectPlan, Task, Subtask, TaskStatus, TaskPriority
+from src.data_models import ProjectPlan, Task, Subtask, TaskStatus, TaskPriority, AppConfig, ModelConfig
+from src.config_manager import ConfigManager
 
 
 @pytest.fixture
@@ -18,25 +19,23 @@ def agent():
     """Create DevTaskAIAssistant instance with mocked dependencies."""
     with tempfile.TemporaryDirectory() as temp_dir, \
          patch('src.agent_core.main.ConfigManager') as mock_config_manager_class, \
-         patch('src.agent_core.project_manager.PersistenceManager') as mock_persistence_manager_class, \
          patch('src.agent_core.llm_manager.LLMService') as mock_llm_service_class:
         
-        mock_config_manager_instance = Mock()
-        mock_config_manager_class.return_value = mock_config_manager_instance
+        # Create proper AppConfig for the ProjectManager
+        test_config = AppConfig(
+            main_model=ModelConfig(model_name="test-model", provider="test"),
+            project_plan_file="project_plan.json",
+            tasks_dir="tasks"
+        )
         
-        mock_persistence_manager_instance = Mock()
-        mock_persistence_manager_class.return_value = mock_persistence_manager_instance
+        mock_config_manager_instance = Mock()
+        mock_config_manager_instance.config = test_config
+        mock_config_manager_class.return_value = mock_config_manager_instance
         
         mock_llm_service_instance = Mock()
         mock_llm_service_class.return_value = mock_llm_service_instance
         
         agent_instance = DevTaskAIAssistant(temp_dir)
-        
-        # Ensure the agent's internal managers use our mocks
-        agent_instance.project_manager.persistence_manager = mock_persistence_manager_instance
-        
-        # Mock the methods on the TaskManager that interact with ProjectManager/PersistenceManager
-        agent_instance.task_manager.project_manager.persistence_manager = mock_persistence_manager_instance
         
         # Specifically mock the get_current_project_plan on ProjectManager
         # as TaskManager uses it directly.

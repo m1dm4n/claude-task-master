@@ -68,3 +68,5 @@ dev-debug.log
 .roo*
 .tasks
 system_prompt.md
+dummy_workspace*
+tas

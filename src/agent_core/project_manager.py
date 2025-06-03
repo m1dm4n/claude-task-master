@@ -1,5 +1,6 @@
 """Project data management and persistence for the DevTask AI Assistant."""
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +11,6 @@ import logfire
 
 from ..data_models import ProjectPlan, Task, Subtask, TaskStatus
 from ..config_manager import ConfigManager
-from ..persistence_manager import PersistenceManager
 
 
 class ProjectManager:
@@ -27,28 +27,60 @@ class ProjectManager:
         self.workspace_path = Path(workspace_path).resolve()
         self.config_manager = config_manager
         
-        # Initialize PersistenceManager with workspace path and app config
-        self.persistence_manager = PersistenceManager(str(self.workspace_path), self.config_manager.config)
+        # Derive paths based on workspace and config
+        self.project_plan_file_path = self.workspace_path / self.config_manager.config.project_plan_file
+        self.tasks_dir_path = self.workspace_path / self.config_manager.config.tasks_dir
         
-        # Ensure project structure (including DB and .tasks dir) is initialized
-        self.persistence_manager.initialize_project_structure()
+        # Ensure project structure is initialized
+        self._initialize_project_structure()
         
         # Load existing project plan (or default if none after initialization)
         self._project_plan: Optional[ProjectPlan] = self._load_project_plan()
     
+    def _initialize_project_structure(self) -> None:
+        """
+        Ensures the workspace directory and required subdirectories exist.
+        Creates default ProjectPlan if none exists.
+        Idempotent: does not overwrite existing data.
+        """
+        # Ensure workspace directory exists
+        self.workspace_path.mkdir(parents=True, exist_ok=True)
+        
+        # Ensure tasks directory exists
+        self.tasks_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create default project plan if none exists
+        if not self._has_project_plan():
+            default_plan = ProjectPlan(
+                project_title="New Project",
+                overall_goal="No project goal defined yet.",
+                tasks=[]
+            )
+            self._save_project_plan_to_json(default_plan)
+    
+    def _has_project_plan(self) -> bool:
+        """Check if project plan JSON file exists."""
+        return self.project_plan_file_path.exists()
+    
     def _load_project_plan(self) -> Optional[ProjectPlan]:
         """
-        Load existing project plan or create a default one.
+        Load existing project plan from JSON file or create a default one.
         
         Returns:
             ProjectPlan object
         """
-        loaded_plan = self.persistence_manager.load_project_plan()
-        if loaded_plan:
-            logfire.info(f"Loaded existing project plan: {loaded_plan.project_title}")
-            return loaded_plan
+        if self.project_plan_file_path.exists():
+            try:
+                with open(self.project_plan_file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    plan = ProjectPlan.model_validate(data)
+                    logfire.info(f"Loaded existing project plan: {plan.project_title}")
+                    return plan
+            except (json.JSONDecodeError, Exception) as e:
+                logfire.error(f"Error loading project plan from {self.project_plan_file_path}: {e}")
+                # Fall through to create default plan
 
-        # Create default project plan if none exists
+        # Create default project plan if none exists or if loading failed
         default_plan = ProjectPlan(
             project_title="New Project",
             overall_goal="No project goal defined yet.",
@@ -56,6 +88,21 @@ class ProjectManager:
         )
         logfire.info("Initialized a new empty project plan.")
         return default_plan
+    
+    def _save_project_plan_to_json(self, plan: ProjectPlan) -> None:
+        """
+        Save project plan to JSON file.
+        
+        Args:
+            plan: ProjectPlan object to save
+        """
+        try:
+            with open(self.project_plan_file_path, 'w', encoding='utf-8') as f:
+                f.write(plan.model_dump_json(indent=2, exclude_none=True))
+            logfire.info(f"Project plan '{plan.project_title}' (ID: {plan.id}) saved to {self.project_plan_file_path}")
+        except Exception as e:
+            logfire.error(f"Error saving project plan to {self.project_plan_file_path}: {e}")
+            raise
     
     def initialize_project(self, project_name: Optional[str] = None) -> None:
         """
@@ -68,8 +115,8 @@ class ProjectManager:
             # Ensure configuration is loaded/initialized
             self.config_manager.config = self.config_manager.load_or_initialize_config()
             
-            # Initialize project structure (creates directories and database)
-            self.persistence_manager.initialize_project_structure()
+            # Initialize project structure (creates directories and JSON file)
+            self._initialize_project_structure()
             
             # Reload project plan after initialization
             self._project_plan = self._load_project_plan()
@@ -77,7 +124,7 @@ class ProjectManager:
             # Update project name if provided
             if project_name and self._project_plan:
                 self._project_plan.project_title = project_name
-                self.persistence_manager.save_project_plan(self._project_plan)
+                self._save_project_plan_to_json(self._project_plan)
                 logfire.info(f"Project initialized with name: {project_name}")
             else:
                 logfire.info("Project structure initialized successfully")
@@ -103,7 +150,7 @@ class ProjectManager:
             project_plan: ProjectPlan to set
         """
         self._project_plan = project_plan
-        self.persistence_manager.save_project_plan(self._project_plan)
+        self._save_project_plan_to_json(self._project_plan)
     
     def reload_project_plan(self) -> Optional[ProjectPlan]:
         """
@@ -118,4 +165,4 @@ class ProjectManager:
     def save_project_plan(self) -> None:
         """Save the current project plan to storage."""
         if self._project_plan:
-            self.persistence_manager.save_project_plan(self._project_plan)
+            self._save_project_plan_to_json(self._project_plan)
