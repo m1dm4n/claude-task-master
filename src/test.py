@@ -64,7 +64,7 @@ async def main():
             print(f"Research Query: {research_query}")
 
             try:
-                research_summary = await task_master_agent.research_for_task(refined_task.title, research_query)
+                research_summary = await task_master_agent.llm_manager.research_query(refined_task.title, research_query)
                 print("\nResearch Summary:")
                 print(research_summary)
             except Exception as e:

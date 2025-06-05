@@ -4,30 +4,24 @@ Tests the new plan and parse-prd commands with real LLM services.
 """
 
 import pytest
-from typer.testing import CliRunner
 from pathlib import Path
 import json
-import os
 
-from src.cli import app
+from src.cli.main import app
 from src.data_models import ProjectPlan, Task, TaskStatus
 from tests.cli.utils import requires_api_key
-
-@pytest.fixture
-def runner():
-    """Create a CLI runner for testing."""
-    return CliRunner()
-
+from tests.cli.test_utils import run_cli_command, assert_task_properties
 
 class TestPlanCommand:
     """Test cases for the plan command."""
 
     @requires_api_key()
-    def test_plan_command_basic_usage(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_basic_usage(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test basic usage of the plan command with real LLM service."""
         # Act
-        result = runner.invoke(
-            app, ['plan', 'Build a simple calculator app'])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Build a simple calculator app'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
@@ -39,90 +33,70 @@ class TestPlanCommand:
         assert "Total Tasks:" in result.stdout
 
         # Verify the project plan file was created and has correct structure
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
-        
-        assert "project_title" in plan_data
-        assert plan_data["project_title"] is not None
-        assert "overall_goal" in plan_data
-        assert 'Build a simple calculator app' in plan_data["overall_goal"]
-        assert "tasks" in plan_data
-        assert isinstance(plan_data["tasks"], list)
-        assert len(plan_data["tasks"]) > 0  # Should have generated some tasks
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
+        assert 'Build a simple calculator app' in plan.overall_goal
+        assert len(plan.tasks) > 0  # Should have generated some tasks
 
     @requires_api_key()
-    def test_plan_command_with_title_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_with_title_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test plan command with --title option using real LLM."""
         custom_title = "My Calculator App"
         # Act
-        result = runner.invoke(app, [
-            'plan', 'Create a calculator',
-            '--title', custom_title
-        ])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Create a calculator', '--title', custom_title], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert "✅ Project plan" in result.stdout
         assert "generated and saved!" in result.stdout
 
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
-        
-        # Check if the custom title is in the saved plan
-        assert custom_title in plan_data["project_title"]
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
+        assert plan.project_title == custom_title
 
     @requires_api_key()
-    def test_plan_command_with_num_tasks_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_with_num_tasks_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test plan command with --num-tasks option using real LLM."""
         # Act
-        result = runner.invoke(app, [
-            'plan', 'Build a chatting app',
-            '--num-tasks', '3'
-        ])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Build a chatting app', '--num-tasks', '3'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert "(Focusing on approximately 3 main tasks)" in result.stdout
         assert "✅ Project plan" in result.stdout
 
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
-        
-        assert "tasks" in plan_data
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
         # LLM might generate slightly different number, check it's reasonable
-        assert 2 <= len(plan_data["tasks"]) <= 5  # Allow some flexibility
+        assert 2 <= len(plan.tasks) <= 5  # Allow some flexibility
 
     @requires_api_key()
-    def test_plan_command_with_research_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_with_research_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test plan command with --research option using real LLM."""
         # Act
-        result = runner.invoke(app, [
-            'plan', 'Create a simple web page',
-            '--research'
-        ])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Create a simple web page', '--research'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert "(Using research model for enhanced planning)" in result.stdout
         assert "✅ Project plan" in result.stdout
         
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists()
+        plan = project_plan_factory.load()
+        assert plan is not None
 
     @requires_api_key()
-    def test_plan_command_shows_task_summary(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_shows_task_summary(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test that plan command shows task summary correctly using real LLM."""
         # Act
-        result = runner.invoke(app, ['plan', 'Build a simple clock app'])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Build a simple clock app'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
@@ -131,40 +105,43 @@ class TestPlanCommand:
         assert "Total Tasks:" in result.stdout
         assert "TaskStatus.PENDING" in result.stdout
         assert "💡 Use 'task-master list' to view the full plan." in result.stdout
+        
+        plan = project_plan_factory.load()
+        assert plan is not None
 
     @requires_api_key()
-    def test_plan_command_limits_task_display(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_limits_task_display(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test that plan command limits task display to first 3 tasks if more are generated."""
         # Act - Request more tasks to test the display limiting
-        result = runner.invoke(
-            app, ['plan', 'Build a comprehensive web application', '--num-tasks', '6'])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', 'Build a comprehensive web application', '--num-tasks', '6'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
 
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
 
         # Verify tasks were generated
-        num_tasks = len(plan_data["tasks"])
+        num_tasks = len(plan.tasks)
         assert num_tasks > 3  # Should have generated more than 3 tasks
 
         # Check that only first 3 tasks are displayed in output (if more than 3 exist)
         if num_tasks > 3:
-            assert f"- {plan_data['tasks'][0]['title']}" in result.stdout
-            assert f"- {plan_data['tasks'][1]['title']}" in result.stdout
-            assert f"- {plan_data['tasks'][2]['title']}" in result.stdout
+            assert f"- {plan.tasks[0].title}" in result.stdout
+            assert f"- {plan.tasks[1].title}" in result.stdout
+            assert f"- {plan.tasks[2].title}" in result.stdout
             
             # Check that "..." is shown when there are more than 3 tasks
             assert "..." in result.stdout
 
-    def test_plan_command_handles_invalid_input(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_plan_command_handles_invalid_input(self, runner, cli_test_workspace, real_agent):
         """Test that plan command handles invalid input gracefully."""
         # Act - Use an empty goal which should cause an error
-        result = runner.invoke(app, ['plan', ''])
+        workspace_path, _ = cli_test_workspace
+        result = await run_cli_command(runner, ['plan', ''], cli_test_workspace)
 
         # Assert - Should handle gracefully, either with error or default behavior
         # The exact behavior depends on validation in the CLI
@@ -175,14 +152,16 @@ class TestParsePrdCommand:
     """Test cases for the parse-prd command."""
 
     @requires_api_key()
-    def test_parse_prd_command_basic_usage(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_basic_usage(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test basic usage of the parse-prd command with real LLM."""
         prd_content = "# Calculator App\n\nBuild a simple calculator that can perform basic arithmetic operations: addition, subtraction, multiplication, and division."
-        prd_file = cli_test_workspace / "calculator_prd.md"
+        workspace_path, _ = cli_test_workspace
+        prd_file = workspace_path / "calculator_prd.md"
         prd_file.write_text(prd_content)
 
         # Act
-        result = runner.invoke(app, ['parse-prd', str(prd_file)])
+        result = await run_cli_command(runner, ['parse-prd', str(prd_file)], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
@@ -191,111 +170,97 @@ class TestParsePrdCommand:
         assert "generated from PRD and saved!" in result.stdout
         assert "Total Tasks:" in result.stdout
 
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
-        
-        assert "project_title" in plan_data
-        assert plan_data["project_title"] is not None
-        assert "overall_goal" in plan_data
-        assert "tasks" in plan_data
-        assert isinstance(plan_data["tasks"], list)
-        assert len(plan_data["tasks"]) > 0  # Should have generated some tasks
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
+        assert len(plan.tasks) > 0  # Should have generated some tasks
 
     @requires_api_key()
-    def test_parse_prd_command_with_title_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_with_title_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test parse-prd command with --title option using real LLM."""
         prd_content = "# Simple Timer App\nCreate a basic countdown timer application."
-        prd_file = cli_test_workspace / "timer_prd.md"
+        workspace_path, _ = cli_test_workspace
+        prd_file = workspace_path / "timer_prd.md"
         prd_file.write_text(prd_content)
         custom_title = "Timer Application"
 
         # Act
-        result = runner.invoke(app, [
-            'parse-prd', str(prd_file),
-            '--title', custom_title
-        ])
+        result = await run_cli_command(runner, ['parse-prd', str(prd_file), '--title', custom_title], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert f"✅ Project plan '{custom_title}' generated from PRD and saved!" in result.stdout
         
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
-        assert plan_data["project_title"] == custom_title
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
+        assert plan.project_title == custom_title
 
     @requires_api_key()
-    def test_parse_prd_command_with_num_tasks_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_with_num_tasks_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test parse-prd command with --num-tasks option using real LLM."""
         prd_content = "# Simple Note App\nAs a user, I want to create, edit, and delete notes."
-        prd_file = cli_test_workspace / "notes_prd.md"
+        workspace_path, _ = cli_test_workspace
+        prd_file = workspace_path / "notes_prd.md"
         prd_file.write_text(prd_content)
 
         # Act
-        result = runner.invoke(app, [
-            'parse-prd', str(prd_file),
-            '--num-tasks', '4'
-        ])
+        result = await run_cli_command(runner, ['parse-prd', str(prd_file), '--num-tasks', '4'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert "(Focusing on approximately 4 main tasks)" in result.stdout
         assert "✅ Project plan" in result.stdout
 
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
-        
-        with open(plan_file, "r") as f:
-            plan_data = json.load(f)
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"
         # LLM might generate slightly different number, check it's reasonable
-        assert 3 <= len(plan_data["tasks"]) <= 6  # Allow some flexibility
+        assert 3 <= len(plan.tasks) <= 6  # Allow some flexibility
 
     @requires_api_key()
-    def test_parse_prd_command_with_research_option(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_with_research_option(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test parse-prd command with --research option using real LLM."""
         prd_content = "# Weather App\nCreate a simple weather application that shows current conditions."
-        prd_file = cli_test_workspace / "weather_prd.md"
+        workspace_path, _ = cli_test_workspace
+        prd_file = workspace_path / "weather_prd.md"
         prd_file.write_text(prd_content)
 
         # Act
-        result = runner.invoke(app, [
-            'parse-prd', str(prd_file),
-            '--research'
-        ])
+        result = await run_cli_command(runner, ['parse-prd', str(prd_file), '--research'], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
         assert "(Using research model for enhanced parsing)" in result.stdout
         assert "✅ Project plan" in result.stdout
         
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
+        plan = project_plan_factory.load()
+        assert plan is not None
 
-    def test_parse_prd_command_with_nonexistent_file(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_with_nonexistent_file(self, runner, cli_test_workspace, real_agent):
         """Test parse-prd command with non-existent file."""
-        nonexistent_file = cli_test_workspace / 'nonexistent.md'
+        workspace_path, _ = cli_test_workspace
+        nonexistent_file = workspace_path / 'nonexistent.md'
 
         # Act
-        result = runner.invoke(app, ['parse-prd', str(nonexistent_file)])
+        result = await run_cli_command(runner, ['parse-prd', str(nonexistent_file)], cli_test_workspace)
 
         # Assert
         assert result.exit_code != 0  # Typer file validation error
         assert "Invalid value for 'PRD_FILE'" in result.stderr or "does not exist" in result.stderr
 
     @requires_api_key()
-    def test_parse_prd_command_shows_task_summary(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_parse_prd_command_shows_task_summary(self, runner, cli_test_workspace, project_plan_factory, real_agent):
         """Test that parse-prd command shows task summary correctly using real LLM."""
         prd_content = "# Login System\nImplement user authentication with login and logout functionality."
-        prd_file = cli_test_workspace / "login_prd.md"
+        workspace_path, _ = cli_test_workspace
+        prd_file = workspace_path / "login_prd.md"
         prd_file.write_text(prd_content)
 
         # Act
-        result = runner.invoke(app, ['parse-prd', str(prd_file)])
+        result = await run_cli_command(runner, ['parse-prd', str(prd_file)], cli_test_workspace)
 
         # Assert
         assert result.exit_code == 0, result.stdout
@@ -306,5 +271,5 @@ class TestParsePrdCommand:
         assert "💡 Use 'task-master list' to view the full plan." in result.stdout
 
         # Check that the plan file was created
-        plan_file = cli_test_workspace / "project_plan.json"
-        assert plan_file.exists(), f"Expected plan file {plan_file} not found. Output: {result.stdout}"
+        plan = project_plan_factory.load()
+        assert plan is not None, f"Expected plan file not found or could not be loaded. Output: {result.stdout}"

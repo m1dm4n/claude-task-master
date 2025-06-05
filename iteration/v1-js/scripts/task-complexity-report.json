@@ -139,7 +139,7 @@
 		},
 		{
 			"taskId": 53,
-			"taskTitle": "Implement Subtask Suggestion Feature for Parent Tasks",
+			"taskTitle": "Implement Task Suggestion Feature for Parent Tasks",
 			"complexityScore": 6,
 			"recommendedSubtasks": 6,
 			"expansionPrompt": "The current 6 subtasks for implementing the subtask suggestion feature appear comprehensive. Consider if any additional subtasks are needed for suggestion quality metrics, user feedback collection, or performance optimization.",
@@ -339,7 +339,7 @@
 		},
 		{
 			"taskId": 90,
-			"taskTitle": "Implement Subtask Progress Analyzer and Reporting System",
+			"taskTitle": "Implement Task Progress Analyzer and Reporting System",
 			"complexityScore": 8,
 			"recommendedSubtasks": 6,
 			"expansionPrompt": "Break down the analyzer implementation into: (1) Design and implement progress tracking logic, (2) Develop status validation and issue detection, (3) Build the reporting system with multiple output formats, (4) Integrate analyzer with the existing task management system, (5) Optimize for performance and scalability, (6) Write unit, integration, and performance tests.",

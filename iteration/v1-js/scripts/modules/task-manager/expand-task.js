@@ -359,12 +359,12 @@ function parseSubtasksFromText(
 			validatedSubtasks.push(result.data);
 		} else {
 			logger.warn(
-				`Subtask validation failed for raw data: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
+				`Task validation failed for raw data: ${JSON.stringify(rawSubtask).substring(0, 100)}...`
 			);
 			result.error.errors.forEach((err) => {
 				const errorMessage = `  - Field '${err.path.join('.')}': ${err.message}`;
 				logger.warn(errorMessage);
-				validationErrors.push(`Subtask ${currentId}: ${errorMessage}`);
+				validationErrors.push(`Task ${currentId}: ${errorMessage}`);
 			});
 		}
 		currentId++;
@@ -563,7 +563,7 @@ async function expandTask(
 		}
 		// --- End Complexity Report / Prompt Logic ---
 
-		// --- AI Subtask Generation using generateTextService ---
+		// --- AI Task Generation using generateTextService ---
 		let generatedSubtasks = [];
 		let loadingIndicator = null;
 		if (outputFormat === 'text') {

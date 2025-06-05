@@ -67,7 +67,7 @@ task-master update-task --id=<id> --prompt="<prompt>"
 task-master update-task --id=<id> --prompt="<prompt>" --research
 ```
 
-## Update a Subtask
+## Update a Task
 
 ```bash
 # Append additional information to a specific subtask

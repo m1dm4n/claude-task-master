@@ -21,8 +21,8 @@ from uuid import uuid4
 # import sys
 # sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from src.agent_core.main import DevTaskAIAssistant
-from src.data_models import Task, Subtask, TaskStatus, TaskPriority
+from src.agent_core.assistant import DevTaskAIAssistant
+from src.data_models import Task, TaskStatus, TaskPriority
 
 temp_workspace = Path(__file__).parent / "fixture_generation_workspace"
 temp_workspace.mkdir(exist_ok=True)

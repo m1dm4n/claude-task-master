@@ -434,8 +434,8 @@ describe('Utils Module', () => {
 				id: 3,
 				title: 'Task with subtasks',
 				subtasks: [
-					{ id: 1, title: 'Subtask 1' },
-					{ id: 2, title: 'Subtask 2' }
+					{ id: 1, title: 'Task 1' },
+					{ id: 2, title: 'Task 2' }
 				]
 			}
 		];

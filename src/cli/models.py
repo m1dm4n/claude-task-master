@@ -4,7 +4,6 @@ import typer
 from typing_extensions import Annotated
 from typing import Optional
 
-from .utils import get_agent
 
 
 def create_models_app() -> typer.Typer:
@@ -17,8 +16,8 @@ def create_models_app() -> typer.Typer:
         List all configured AI models.
         """
         try:
-            agent = get_agent(ctx)
-            configs = agent.get_model_configurations()
+            agent = ctx.obj["agent"]
+            configs = agent.llm_config_manager.get_model_configurations()
             
             typer.echo("🤖 Configured AI Models:")
             typer.echo("=" * 40)
@@ -60,8 +59,8 @@ def create_models_app() -> typer.Typer:
             raise typer.Exit(code=1)
         
         try:
-            agent = get_agent(ctx)
-            success = agent.set_model_configuration(
+            agent = ctx.obj["agent"]
+            success = agent.llm_config_manager.set_model_configuration(
                 model_type=model_type,
                 model_name=model_name,
                 provider=provider,
@@ -85,7 +84,7 @@ def create_models_app() -> typer.Typer:
         Interactive setup for AI model configurations.
         """
         try:
-            agent = get_agent(ctx)
+            agent = ctx.obj["agent"]
             
             typer.echo("🔧 AI Model Configuration Setup")
             typer.echo("=" * 40)
@@ -97,7 +96,7 @@ def create_models_app() -> typer.Typer:
             main_api_key = typer.prompt("API key (optional, leave blank to use environment)", default="", show_default=False)
             main_base_url = typer.prompt("Base URL (optional)", default="", show_default=False)
             
-            success = agent.set_model_configuration(
+            success = agent.llm_config_manager.set_model_configuration(
                 model_type="main",
                 model_name=main_model,
                 provider=main_provider if main_provider else None,
@@ -118,7 +117,7 @@ def create_models_app() -> typer.Typer:
                 research_api_key = typer.prompt("API key (optional)", default="", show_default=False)
                 research_base_url = typer.prompt("Base URL (optional)", default="", show_default=False)
                 
-                success = agent.set_model_configuration(
+                success = agent.llm_config_manager.set_model_configuration(
                     model_type="research",
                     model_name=research_model,
                     provider=research_provider if research_provider else None,
@@ -139,7 +138,7 @@ def create_models_app() -> typer.Typer:
                 fallback_api_key = typer.prompt("API key (optional)", default="", show_default=False)
                 fallback_base_url = typer.prompt("Base URL (optional)", default="", show_default=False)
                 
-                success = agent.set_model_configuration(
+                success = agent.llm_config_manager.set_model_configuration(
                     model_type="fallback",
                     model_name=fallback_model,
                     provider=fallback_provider if fallback_provider else None,

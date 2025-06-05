@@ -4,7 +4,7 @@
 import sys
 sys.path.append('src')
 
-from src.data_models import ProjectPlan, Task, Subtask, TaskStatus, TaskPriority
+from src.data_models import ProjectPlan, Task, TaskStatus, TaskPriority
 from uuid import uuid4
 from datetime import datetime, timezone, date
 
@@ -21,12 +21,12 @@ def test_basic_models():
         priority = TaskPriority.MEDIUM
         print(f"✅ TaskPriority.MEDIUM: {priority}")
         
-        # Test Subtask creation
-        subtask = Subtask(
-            title="Test Subtask",
+        # Test Task creation
+        subtask = Task(
+            title="Test Task",
             description="Test description"
         )
-        print(f"✅ Subtask created: {subtask.id}")
+        print(f"✅ Task created: {subtask.id}")
         
         # Test Task creation
         task = Task(
@@ -52,13 +52,13 @@ def test_task_with_subtasks():
     print("\nTesting Task with Subtasks...")
     
     try:
-        subtask1 = Subtask(
-            title="Subtask 1",
+        subtask1 = Task(
+            title="Task 1",
             description="First subtask"
         )
         
-        subtask2 = Subtask(
-            title="Subtask 2", 
+        subtask2 = Task(
+            title="Task 2", 
             description="Second subtask"
         )
         

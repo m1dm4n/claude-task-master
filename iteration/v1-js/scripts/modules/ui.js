@@ -489,7 +489,7 @@ function displayHelp() {
 			]
 		},
 		{
-			title: 'Subtask Management',
+			title: 'Task Management',
 			color: 'yellow',
 			commands: [
 				{
@@ -1073,7 +1073,7 @@ async function displayTaskById(
 		console.log(
 			boxen(
 				chalk.white.bold(
-					`Subtask: #${task.parentTask.id}.${task.id} - ${task.title}`
+					`Task: #${task.parentTask.id}.${task.id} - ${task.title}`
 				),
 				{
 					padding: { top: 0, bottom: 0, left: 1, right: 1 },
@@ -1232,7 +1232,7 @@ async function displayTaskById(
 		);
 	}
 
-	// --- Subtask Table Display (uses filtered list: task.subtasks) ---
+	// --- Task Table Display (uses filtered list: task.subtasks) ---
 	if (task.subtasks && task.subtasks.length > 0) {
 		console.log(
 			boxen(chalk.white.bold('Subtasks'), {
@@ -1392,7 +1392,7 @@ async function displayTaskById(
 		}
 	}
 
-	// --- Subtask Progress Bar Display (uses originalSubtasks or task.subtasks) ---
+	// --- Task Progress Bar Display (uses originalSubtasks or task.subtasks) ---
 	// Determine the list to use for progress calculation (always the original if available and filtering happened)
 	const subtasksForProgress = originalSubtasks || task.subtasks; // Use original if filtering occurred, else the potentially empty task.subtasks
 
@@ -1448,7 +1448,7 @@ async function displayTaskById(
 
 		console.log(
 			boxen(
-				chalk.white.bold('Subtask Progress:') +
+				chalk.white.bold('Task Progress:') +
 					'\n\n' +
 					`${chalk.cyan('Completed:')} ${completedSubtasks}/${totalSubtasks} (${completionPercentage.toFixed(1)}%)\n` +
 					`${statusCounts}\n` +

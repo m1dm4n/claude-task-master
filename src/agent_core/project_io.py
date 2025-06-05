@@ -1,5 +1,3 @@
-"""Project data management and persistence for the DevTask AI Assistant."""
-
 import json
 import os
 from datetime import datetime
@@ -9,16 +7,18 @@ from uuid import UUID
 
 import logfire
 
-from ..data_models import ProjectPlan, Task, Subtask, TaskStatus
+from ..data_models import ProjectPlan, Task, TaskStatus
 from ..config_manager import ConfigManager
 
 
-class ProjectManager:
-    """Manages project data, initialization, and persistence."""
+class ProjectIO:
+    """
+    Handles disk I/O for project_plan.json and other project-related files.
+    """
     
     def __init__(self, workspace_path: str, config_manager: ConfigManager):
         """
-        Initialize ProjectManager.
+        Initialize ProjectIO.
         
         Args:
             workspace_path: Path to the workspace directory
@@ -27,14 +27,11 @@ class ProjectManager:
         self.workspace_path = Path(workspace_path).resolve()
         self.config_manager = config_manager
         
-        # Derive paths based on workspace and config
         self.project_plan_file_path = self.workspace_path / self.config_manager.config.project_plan_file
         self.tasks_dir_path = self.workspace_path / self.config_manager.config.tasks_dir
         
-        # Ensure project structure is initialized
         self._initialize_project_structure()
         
-        # Load existing project plan (or default if none after initialization)
         self._project_plan: Optional[ProjectPlan] = self._load_project_plan()
     
     def _initialize_project_structure(self) -> None:
@@ -43,13 +40,9 @@ class ProjectManager:
         Creates default ProjectPlan if none exists.
         Idempotent: does not overwrite existing data.
         """
-        # Ensure workspace directory exists
         self.workspace_path.mkdir(parents=True, exist_ok=True)
-        
-        # Ensure tasks directory exists
         self.tasks_dir_path.mkdir(parents=True, exist_ok=True)
         
-        # Create default project plan if none exists
         if not self._has_project_plan():
             default_plan = ProjectPlan(
                 project_title="New Project",
@@ -78,9 +71,7 @@ class ProjectManager:
                     return plan
             except (json.JSONDecodeError, Exception) as e:
                 logfire.error(f"Error loading project plan from {self.project_plan_file_path}: {e}")
-                # Fall through to create default plan
-
-        # Create default project plan if none exists or if loading failed
+ 
         default_plan = ProjectPlan(
             project_title="New Project",
             overall_goal="No project goal defined yet.",
@@ -112,16 +103,10 @@ class ProjectManager:
             project_name: Optional name for the project
         """
         try:
-            # Ensure configuration is loaded/initialized
             self.config_manager.config = self.config_manager.load_or_initialize_config()
-            
-            # Initialize project structure (creates directories and JSON file)
             self._initialize_project_structure()
-            
-            # Reload project plan after initialization
             self._project_plan = self._load_project_plan()
             
-            # Update project name if provided
             if project_name and self._project_plan:
                 self._project_plan.project_title = project_name
                 self._save_project_plan_to_json(self._project_plan)

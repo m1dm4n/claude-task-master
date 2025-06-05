@@ -67,7 +67,7 @@ async function updateSubtaskById(
 			!subtaskId.includes('.')
 		) {
 			throw new Error(
-				`Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId"`
+				`Invalid subtask ID format: ${subtaskId}. Task ID must be in format "parentId.subtaskId"`
 			);
 		}
 
@@ -119,7 +119,7 @@ async function updateSubtaskById(
 		);
 		if (subtaskIndex === -1) {
 			throw new Error(
-				`Subtask with ID ${subtaskId} not found. Please verify the subtask ID and try again.`
+				`Task with ID ${subtaskId} not found. Please verify the subtask ID and try again.`
 			);
 		}
 
@@ -140,7 +140,7 @@ async function updateSubtaskById(
 				getStatusWithColor(subtask.status)
 			]);
 			console.log(
-				boxen(chalk.white.bold(`Updating Subtask #${subtaskId}`), {
+				boxen(chalk.white.bold(`Updating Task #${subtaskId}`), {
 					padding: 1,
 					borderColor: 'blue',
 					borderStyle: 'round',
@@ -183,9 +183,9 @@ async function updateSubtaskById(
 
 			const contextString = `
 Parent Task: ${JSON.stringify(parentContext)}
-${prevSubtask ? `Previous Subtask: ${JSON.stringify(prevSubtask)}` : ''}
-${nextSubtask ? `Next Subtask: ${JSON.stringify(nextSubtask)}` : ''}
-Current Subtask Details (for context only):\n${subtask.details || '(No existing details)'}
+${prevSubtask ? `Previous Task: ${JSON.stringify(prevSubtask)}` : ''}
+${nextSubtask ? `Next Task: ${JSON.stringify(nextSubtask)}` : ''}
+Current Task Details (for context only):\n${subtask.details || '(No existing details)'}
 `;
 
 			const systemPrompt = `You are an AI assistant helping to update a subtask. You will be provided with the subtask's existing details, context about its parent and sibling tasks, and a user request string.
@@ -263,7 +263,7 @@ Output Requirements:
 
 		if (outputFormat === 'text' && getDebugFlag(session)) {
 			console.log(
-				'>>> DEBUG: Subtask details AFTER AI update:',
+				'>>> DEBUG: Task details AFTER AI update:',
 				updatedSubtask.details
 			);
 		}
@@ -272,14 +272,14 @@ Output Requirements:
 			if (prompt.length < 100) {
 				if (outputFormat === 'text' && getDebugFlag(session)) {
 					console.log(
-						'>>> DEBUG: Subtask description BEFORE append:',
+						'>>> DEBUG: Task description BEFORE append:',
 						updatedSubtask.description
 					);
 				}
 				updatedSubtask.description += ` [Updated: ${new Date().toLocaleDateString()}]`;
 				if (outputFormat === 'text' && getDebugFlag(session)) {
 					console.log(
-						'>>> DEBUG: Subtask description AFTER append:',
+						'>>> DEBUG: Task description AFTER append:',
 						updatedSubtask.description
 					);
 				}

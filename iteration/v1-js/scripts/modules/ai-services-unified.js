@@ -689,7 +689,7 @@ async function logAiUsage({
 			log('info', 'AI Usage Telemetry:', telemetryData);
 		}
 
-		// TODO (Subtask 77.2): Send telemetryData securely to the external endpoint.
+		// TODO (Task 77.2): Send telemetryData securely to the external endpoint.
 
 		return telemetryData;
 	} catch (error) {

@@ -378,9 +378,9 @@ log_step() {
     log_success "Attempted to expand Task 1."
   fi
 
-  log_step "Setting status for Subtask 1.1 (assuming it exists)"
+  log_step "Setting status for Task 1.1 (assuming it exists)"
   task-master set-status --id=1.1 --status=done
-  log_success "Attempted to set status for Subtask 1.1 to 'done'."
+  log_success "Attempted to set status for Task 1.1 to 'done'."
 
   log_step "Listing tasks again (after changes)"
   task-master list --with-subtasks > task_list_after_changes.log
@@ -679,21 +679,21 @@ log_step() {
     log_success "Attempted to expand Task 8."
   fi
 
-  log_step "Updating Subtask 8.1 (update-subtask AI)"
+  log_step "Updating Task 8.1 (update-subtask AI)"
   cmd_output_update_subtask81=$(task-master update-subtask --id=8.1 --prompt="Implementation note: Remember to handle potential API errors and display a user-friendly message." 2>&1)
   exit_status_update_subtask81=$?
   echo "$cmd_output_update_subtask81"
   extract_and_sum_cost "$cmd_output_update_subtask81"
   if [ $exit_status_update_subtask81 -ne 0 ]; then
-    log_error "Updating Subtask 8.1 failed. Exit status: $exit_status_update_subtask81"
+    log_error "Updating Task 8.1 failed. Exit status: $exit_status_update_subtask81"
   else
-    log_success "Attempted update for Subtask 8.1."
+    log_success "Attempted update for Task 8.1."
   fi
 
   # Add a couple more subtasks for multi-remove test
   log_step 'Adding subtasks to Task 2 (for multi-remove test)'
-  task-master add-subtask --parent=2 --title="Subtask 2.1 for removal"
-  task-master add-subtask --parent=2 --title="Subtask 2.2 for removal"
+  task-master add-subtask --parent=2 --title="Task 2.1 for removal"
+  task-master add-subtask --parent=2 --title="Task 2.2 for removal"
   log_success "Added subtasks 2.1 and 2.2."
 
   log_step "Removing Subtasks 2.1 and 2.2 (multi-ID)"
@@ -752,11 +752,11 @@ log_step() {
   log_success "Attempted to expand Task 1 again."
   # Verify 1.1 exists again
   if ! jq -e '.tasks[] | select(.id == 1) | .subtasks[] | select(.id == 1)' tasks/tasks.json > /dev/null; then
-      log_error "Subtask 1.1 not found in tasks.json after re-expanding Task 1."
+      log_error "Task 1.1 not found in tasks.json after re-expanding Task 1."
       exit 1
   fi
 
-  log_step "Adding dependency: Task 3 depends on Subtask 1.1"
+  log_step "Adding dependency: Task 3 depends on Task 1.1"
   task-master add-dependency --id=3 --depends-on=1.1
   log_success "Added dependency 3 -> 1.1."
 
@@ -764,7 +764,7 @@ log_step() {
   task-master show 3 > task_3_details_after_dep_add.log
   log_success "Task 3 details saved. (Manual/LLM check recommended for dependency [1.1])"
 
-  log_step "Removing dependency: Task 3 depends on Subtask 1.1"
+  log_step "Removing dependency: Task 3 depends on Task 1.1"
   task-master remove-dependency --id=3 --depends-on=1.1
   log_success "Removed dependency 3 -> 1.1."
 

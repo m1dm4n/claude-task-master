@@ -44,8 +44,8 @@
   "subtasks": [
     {
       "id": 1,
-      "title": "Subtask Title",
-      "description": "Subtask description",
+      "title": "Task Title",
+      "description": "Task description",
       "status": "pending|done|deferred",
       "dependencies": [],
       "acceptanceCriteria": "Verification criteria"
@@ -185,7 +185,7 @@
    - Add fallback to Claude when unavailable
    - Implement response quality comparison logic
 
-2. **Research-Backed Subtask Generation**
+2. **Research-Backed Task Generation**
    - Create specialized research prompts
    - Implement context enrichment
    - Add domain-specific knowledge incorporation
@@ -279,7 +279,7 @@
    - Provides research-backed improvements
 
 ## Advanced Layer
-10. **Research-Backed Subtask Generation**
+10. **Research-Backed Task Generation**
     - Depends on Perplexity integration and task expansion
     - Provides higher quality, more contextual subtasks
     - Enhances the value of the task breakdown

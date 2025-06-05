@@ -225,7 +225,7 @@ const testUpdateSingleTaskStatus = (tasksData, taskIdInput, newStatus) => {
 		const subtask = parentTask.subtasks.find((st) => st.id === subtaskId);
 		if (!subtask) {
 			throw new Error(
-				`Subtask ${subtaskId} not found in parent task ${parentId}`
+				`Task ${subtaskId} not found in parent task ${parentId}`
 			);
 		}
 
@@ -999,7 +999,7 @@ describe('Task Manager Module', () => {
 					subtasks: [
 						{
 							id: 1,
-							title: 'Subtask 1',
+							title: 'Task 1',
 							description: 'First subtask',
 							status: 'pending',
 							dependencies: [],
@@ -1007,7 +1007,7 @@ describe('Task Manager Module', () => {
 						},
 						{
 							id: 2,
-							title: 'Subtask 2',
+							title: 'Task 2',
 							description: 'Second subtask',
 							status: 'pending',
 							dependencies: [1],
@@ -1219,7 +1219,7 @@ describe('Task Manager Module', () => {
 			// Assert
 			expect(() =>
 				testUpdateSingleTaskStatus(testTasksData, '3.99', 'done')
-			).toThrow('Subtask 99 not found');
+			).toThrow('Task 99 not found');
 		});
 	});
 
@@ -1450,7 +1450,7 @@ describe('Task Manager Module', () => {
 			testData.tasks[1].subtasks = [
 				{
 					id: 1,
-					title: 'Test Subtask',
+					title: 'Test Task',
 					description: 'A test subtask',
 					status: 'pending',
 					dependencies: []
@@ -1608,7 +1608,7 @@ describe('Task Manager Module', () => {
 		test('should add a new subtask to a parent task', async () => {
 			// Create new subtask data
 			const newSubtaskData = {
-				title: 'New Subtask',
+				title: 'New Task',
 				description: 'This is a new subtask',
 				details: 'Implementation details for the subtask',
 				status: 'pending',
@@ -1636,7 +1636,7 @@ describe('Task Manager Module', () => {
 			// Verify the subtask was created with correct data
 			expect(newSubtask).toBeDefined();
 			expect(newSubtask.id).toBe(1);
-			expect(newSubtask.title).toBe('New Subtask');
+			expect(newSubtask.title).toBe('New Task');
 			expect(newSubtask.parentTaskId).toBe(1);
 
 			// Verify generateTaskFiles was called
@@ -1672,7 +1672,7 @@ describe('Task Manager Module', () => {
 		test('should throw an error if parent task does not exist', async () => {
 			// Create new subtask data
 			const newSubtaskData = {
-				title: 'New Subtask',
+				title: 'New Task',
 				description: 'This is a new subtask'
 			};
 
@@ -1722,7 +1722,7 @@ describe('Task Manager Module', () => {
 		test('should not regenerate task files if generateFiles is false', async () => {
 			// Create new subtask data
 			const newSubtaskData = {
-				title: 'New Subtask',
+				title: 'New Task',
 				description: 'This is a new subtask'
 			};
 
@@ -1755,7 +1755,7 @@ describe('Task Manager Module', () => {
 						subtasks: [
 							{
 								id: 1,
-								title: 'Subtask 1',
+								title: 'Task 1',
 								description: 'This is subtask 1',
 								status: 'pending',
 								dependencies: [],
@@ -1763,7 +1763,7 @@ describe('Task Manager Module', () => {
 							},
 							{
 								id: 2,
-								title: 'Subtask 2',
+								title: 'Task 2',
 								description: 'This is subtask 2',
 								status: 'in-progress',
 								dependencies: [1], // Depends on subtask 1
@@ -1808,7 +1808,7 @@ describe('Task Manager Module', () => {
 			// Verify the result is the new task
 			expect(result).toBeDefined();
 			expect(result.id).toBe(3);
-			expect(result.title).toBe('Subtask 1');
+			expect(result.title).toBe('Task 1');
 			expect(result.dependencies).toContain(1);
 
 			// Verify writeJSON was called
@@ -1842,7 +1842,7 @@ describe('Task Manager Module', () => {
 			// Expect an error for non-existent subtask
 			expect(() =>
 				testRemoveSubtask('tasks/tasks.json', '1.999', false)
-			).toThrow(/Subtask 1.999 not found/);
+			).toThrow(/Task 1.999 not found/);
 
 			// Verify writeJSON was not called
 			expect(mockWriteJSON).not.toHaveBeenCalled();
@@ -1861,7 +1861,7 @@ describe('Task Manager Module', () => {
 						subtasks: [
 							{
 								id: 1,
-								title: 'Last Subtask',
+								title: 'Last Task',
 								description: 'This is the last subtask',
 								status: 'pending',
 								dependencies: [],
@@ -2322,7 +2322,7 @@ describe('Task Manager Module', () => {
 
 			const subtask = parentTask.subtasks.find((st) => st.id === subtaskIdNum);
 			if (!subtask) {
-				throw new Error(`Subtask with ID ${subtaskId} not found`);
+				throw new Error(`Task with ID ${subtaskId} not found`);
 			}
 
 			// Check if subtask is already completed
@@ -2546,7 +2546,7 @@ describe('Task Manager Module', () => {
 			// Verify the error was logged
 			expect(mockLog).toHaveBeenCalledWith(
 				'error',
-				expect.stringContaining('Subtask with ID 3.999 not found')
+				expect.stringContaining('Task with ID 3.999 not found')
 			);
 
 			// Verify the correct functions were called
@@ -2750,16 +2750,16 @@ describe('Task Manager Module', () => {
 							subtasks: [
 								{
 									id: 1,
-									title: 'Subtask 1.1',
-									description: 'Subtask 1.1 description',
+									title: 'Task 1.1',
+									description: 'Task 1.1 description',
 									details: 'Initial subtask details.',
 									status: 'pending',
 									dependencies: []
 								},
 								{
 									id: 2,
-									title: 'Subtask 1.2',
-									description: 'Subtask 1.2 description',
+									title: 'Task 1.2',
+									description: 'Task 1.2 description',
 									details: 'Initial subtask details for 1.2.',
 									status: 'done', // Completed subtask
 									dependencies: []
@@ -3337,7 +3337,7 @@ const testRemoveSubtask = (
 		(st) => st.id === subtaskIdNum
 	);
 	if (subtaskIndex === -1) {
-		throw new Error(`Subtask ${subtaskId} not found`);
+		throw new Error(`Task ${subtaskId} not found`);
 	}
 
 	// Get a copy of the subtask before removing it

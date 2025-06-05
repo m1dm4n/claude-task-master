@@ -94,7 +94,7 @@ export function registerAddSubtaskTool(server) {
 				);
 
 				if (result.success) {
-					log.info(`Subtask added successfully: ${result.data.message}`);
+					log.info(`Task added successfully: ${result.data.message}`);
 				} else {
 					log.error(`Failed to add subtask: ${result.error.message}`);
 				}

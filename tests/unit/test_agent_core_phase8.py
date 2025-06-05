@@ -1,13 +1,16 @@
-"""Unit tests for Phase 8: Single Task/Subtask Refinement functionality."""
+"""Unit tests for Phase 8: Single Task/Task Refinement functionality."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 from uuid import uuid4, UUID
 from datetime import datetime, timezone
 
-from src.agent_core.main import DevTaskAIAssistant
-from src.agent_core.llm_manager import LLMManager
-from src.data_models import Task, Subtask, TaskStatus, TaskPriority, ProjectPlan
+from src.agent_core.assistant import DevTaskAIAssistant
+from src.agent_core.llm_generator import LLMGenerator
+from src.agent_core.project_io import ProjectIO
+from src.agent_core.task_operations import TaskOperations
+from src.data_models import Task, TaskStatus, TaskPriority, ProjectPlan, AppConfig, ModelConfig
+from src.config_manager import ConfigManager
 
 pytestmark = pytest.mark.asyncio
 
@@ -16,23 +19,45 @@ class TestRefineTaskOrSubtask:
     """Test the refine_task_or_subtask method in DevTaskAIAssistant."""
 
     @pytest.fixture
-    def mock_agent(self):
-        """Create a DevTaskAIAssistant with mocked dependencies."""
-        with patch('src.agent_core.main.ConfigManager'), \
-             patch('src.agent_core.main.ProjectManager'), \
-             patch('src.agent_core.main.LLMManager'), \
-             patch('src.agent_core.main.TaskManager'), \
-             patch('src.agent_core.main.PlanningManager'):
+    def mock_agent(self, tmp_path):
+        with patch('src.config_manager.ConfigManager') as MockConfigManager, \
+             patch('src.agent_core.llm_config.LLMConfigManager') as MockLLMConfigManager, \
+             patch('src.agent_core.llm_provider.LLMProvider') as MockLLMProvider, \
+             patch('src.agent_core.llm_generator.LLMGenerator') as MockLLMGenerator, \
+             patch('src.agent_core.plan_builder.PlanBuilder') as MockPlanBuilder, \
+             patch('src.agent_core.project_io.ProjectIO') as MockProjectIO, \
+             patch('src.agent_core.task_operations.TaskOperations') as MockTaskOperations, \
+             patch('src.agent_core.dependency_logic.DependencyManager') as MockDependencyManager:
+
+            mock_config_manager_instance = MockConfigManager.return_value
+            test_config = AppConfig(
+                main_model=ModelConfig(model_name="test-model", provider="test"),
+                project_plan_file="project_plan.json",
+                tasks_dir="tasks"
+            )
+            mock_config_manager_instance.config = test_config
+            mock_config_manager_instance.get_model_config.return_value = test_config.main_model
+
+            mock_project_io_instance = MockProjectIO.return_value
+            mock_project_io_instance.get_current_project_plan.return_value = Mock()
+            mock_project_io_instance.save_project_plan.return_value = None
+
+            agent = DevTaskAIAssistant(str(tmp_path))
+            agent.config_manager = mock_config_manager_instance
+            agent.llm_config_manager = MockLLMConfigManager.return_value
+            agent.llm_provider = MockLLMProvider.return_value
+            agent.llm_generator = MockLLMGenerator.return_value
+            agent.plan_builder = MockPlanBuilder.return_value
+            agent.project_io = mock_project_io_instance
+            agent.task_operations = MockTaskOperations.return_value
+            agent.dependency_manager = MockDependencyManager.return_value
             
-            agent = DevTaskAIAssistant("/fake/workspace")
+            agent.task_operations._find_item_and_context = MagicMock()
+            agent.project_io.save_project_plan = MagicMock()
+            agent.project_io.get_current_project_plan = MagicMock()
+            agent.llm_generator.refine_item_details = AsyncMock()
             
-            # Mock the task manager methods
-            agent.task_manager._find_item_and_context = MagicMock()
-            agent.project_manager.save_project_plan = MagicMock()
-            agent.project_manager.get_current_project_plan = MagicMock()
-            agent.llm_manager.refine_item_details = AsyncMock()
-            
-            return agent
+            yield agent
 
     @pytest.fixture
     def sample_task(self):
@@ -50,9 +75,9 @@ class TestRefineTaskOrSubtask:
     @pytest.fixture
     def sample_subtask(self):
         """Create a sample subtask for testing."""
-        return Subtask(
+        return Task(
             id=uuid4(),
-            title="Original Subtask Title",
+            title="Original Task Title",
             description="Original subtask description",
             status=TaskStatus.PENDING,
             priority=TaskPriority.LOW,
@@ -79,37 +104,30 @@ class TestRefineTaskOrSubtask:
         
         # Mock task manager to return the task and its context
         mock_tasks_list = [sample_task]
-        mock_agent.task_manager._find_item_and_context.return_value = (
+        mock_agent.task_operations._find_item_and_context.return_value = (
             sample_task, mock_tasks_list, 0, None
         )
         
-        # Mock LLM manager to return updated task
-        mock_agent.llm_manager.refine_item_details.return_value = updated_task
+        mock_agent.llm_generator.refine_item_details.return_value = updated_task
         
-        # Mock project plan
         mock_project_plan = MagicMock()
-        mock_agent.project_manager.get_current_project_plan.return_value = mock_project_plan
+        mock_agent.project_io.get_current_project_plan.return_value = mock_project_plan
         
-        # Act
         result = await mock_agent.refine_task_or_subtask(task_id, refinement_instruction, use_research=False)
         
-        # Assert
         assert result is not None
         assert isinstance(result, Task)
         assert result.title == "Updated Task Title"
         assert result.priority == TaskPriority.HIGH
-        assert result.id == sample_task.id  # ID should be preserved
-        assert result.created_at == sample_task.created_at  # created_at should be preserved
+        assert result.id == sample_task.id
+        assert result.created_at == sample_task.created_at
         
-        # Verify that the LLM manager was called correctly
-        mock_agent.llm_manager.refine_item_details.assert_called_once_with(
+        mock_agent.llm_generator.refine_item_details.assert_called_once_with(
             sample_task, refinement_instruction, "main"
         )
         
-        # Verify that the project plan was saved
-        mock_agent.project_manager.save_project_plan.assert_called_once_with(mock_project_plan)
+        mock_agent.project_io.save_project_plan.assert_called_once_with(mock_project_plan)
         
-        # Verify that the task was replaced in the list
         assert mock_tasks_list[0] == result
 
     async def test_refine_task_or_subtask_updates_subtask_details(self, mock_agent, sample_subtask):
@@ -119,7 +137,7 @@ class TestRefineTaskOrSubtask:
         refinement_instruction = "Add test strategy and change status to IN_PROGRESS"
         
         # Create updated subtask data that the LLM manager should return
-        updated_subtask = Subtask(
+        updated_subtask = Task(
             id=sample_subtask.id,
             title=sample_subtask.title,
             description="Updated subtask description",
@@ -141,37 +159,30 @@ class TestRefineTaskOrSubtask:
         )
         
         # Mock task manager to return the subtask and its context
-        mock_agent.task_manager._find_item_and_context.return_value = (
+        mock_agent.task_operations._find_item_and_context.return_value = (
             sample_subtask, parent_task.subtasks, 0, parent_task
         )
         
-        # Mock LLM manager to return updated subtask
-        mock_agent.llm_manager.refine_item_details.return_value = updated_subtask
+        mock_agent.llm_generator.refine_item_details.return_value = updated_subtask
         
-        # Mock project plan
         mock_project_plan = MagicMock()
-        mock_agent.project_manager.get_current_project_plan.return_value = mock_project_plan
+        mock_agent.project_io.get_current_project_plan.return_value = mock_project_plan
         
-        # Act
         result = await mock_agent.refine_task_or_subtask(subtask_id, refinement_instruction, use_research=True)
         
-        # Assert
         assert result is not None
-        assert isinstance(result, Subtask)
+        assert isinstance(result, Task)
         assert result.status == TaskStatus.IN_PROGRESS
         assert result.testStrategy == "Comprehensive unit testing required"
-        assert result.id == sample_subtask.id  # ID should be preserved
-        assert result.created_at == sample_subtask.created_at  # created_at should be preserved
+        assert result.id == sample_subtask.id
+        assert result.created_at == sample_subtask.created_at
         
-        # Verify that the LLM manager was called with research model
-        mock_agent.llm_manager.refine_item_details.assert_called_once_with(
+        mock_agent.llm_generator.refine_item_details.assert_called_once_with(
             sample_subtask, refinement_instruction, "research"
         )
         
-        # Verify that the project plan was saved
-        mock_agent.project_manager.save_project_plan.assert_called_once_with(mock_project_plan)
+        mock_agent.project_io.save_project_plan.assert_called_once_with(mock_project_plan)
         
-        # Verify that the subtask was replaced in the parent task's subtasks list
         assert parent_task.subtasks[0] == result
 
     async def test_refine_task_or_subtask_handles_item_not_found(self, mock_agent):
@@ -181,19 +192,15 @@ class TestRefineTaskOrSubtask:
         refinement_instruction = "This should fail"
         
         # Mock task manager to return None (item not found)
-        mock_agent.task_manager._find_item_and_context.return_value = (None, None, None, None)
+        mock_agent.task_operations._find_item_and_context.return_value = (None, None, None, None)
         
-        # Act
         result = await mock_agent.refine_task_or_subtask(non_existent_id, refinement_instruction)
         
-        # Assert
         assert result is None
         
-        # Verify that LLM manager was not called
-        mock_agent.llm_manager.refine_item_details.assert_not_called()
+        mock_agent.llm_generator.refine_item_details.assert_not_called()
         
-        # Verify that project plan was not saved
-        mock_agent.project_manager.save_project_plan.assert_not_called()
+        mock_agent.project_io.save_project_plan.assert_not_called()
 
 
 class TestRefineItemDetails:
@@ -202,13 +209,13 @@ class TestRefineItemDetails:
     @pytest.fixture
     def mock_llm_manager(self):
         """Create an LLMManager with mocked dependencies."""
-        with patch('src.agent_core.llm_manager.ConfigManager'), \
-             patch('src.agent_core.llm_manager.LLMService'):
+        with patch('src.config_manager.ConfigManager'), \
+             patch('src.agent_core.llm_provider.LLMProvider'):
             
-            llm_manager = LLMManager(MagicMock())
-            llm_manager.llm_service.generate_text = AsyncMock()
+            llm_generator = LLMGenerator(MagicMock())
+            llm_generator.llm_provider.generate_text = AsyncMock()
             
-            return llm_manager
+            return llm_generator
 
     @pytest.fixture
     def sample_task_for_llm(self):
@@ -223,97 +230,78 @@ class TestRefineItemDetails:
             updated_at=datetime.now(timezone.utc)
         )
 
-    async def test_refine_item_details_llm_interaction(self, mock_llm_manager, sample_task_for_llm):
-        """Test the refine_item_details method LLM interaction."""
-        # Arrange
+    async def test_refine_item_details_llm_interaction(self, mock_agent, sample_task_for_llm):
+        mock_llm_generator = mock_agent.llm_generator
         refinement_instruction = "Change priority to HIGH and add details"
         
-        # Mock LLM response - simulate a proper JSON response
-        llm_response = f'''{{
-            "id": "{sample_task_for_llm.id}",
-            "title": "Updated LLM Test Task",
-            "description": "Updated task description with refinements",
-            "status": "PENDING",
-            "priority": "HIGH",
-            "details": "Added comprehensive implementation details",
-            "created_at": "{sample_task_for_llm.created_at.isoformat()}",
-            "updated_at": "{datetime.now(timezone.utc).isoformat()}",
-            "subtasks": [],
-            "dependencies": []
-        }}'''
+        updated_task_mock = Task(
+            id=sample_task_for_llm.id,
+            title="Updated LLM Test Task",
+            description="Updated task description with refinements",
+            status=TaskStatus.PENDING,
+            priority=TaskPriority.HIGH,
+            details="Added comprehensive implementation details",
+            created_at=sample_task_for_llm.created_at,
+            updated_at=datetime.now(timezone.utc)
+        )
         
-        mock_llm_manager.llm_service.generate_text.return_value = llm_response
+        mock_llm_generator.llm_provider.generate_text.return_value = updated_task_mock
         
-        # Act
-        result = await mock_llm_manager.refine_item_details(
+        result = await mock_llm_generator.refine_item_details(
             sample_task_for_llm, refinement_instruction, "main"
         )
         
-        # Assert
         assert result is not None
         assert isinstance(result, Task)
         assert result.title == "Updated LLM Test Task"
         assert result.priority == TaskPriority.HIGH
         assert result.details == "Added comprehensive implementation details"
-        assert result.id == sample_task_for_llm.id  # ID preserved
-        assert result.created_at == sample_task_for_llm.created_at  # created_at preserved
+        assert result.id == sample_task_for_llm.id
+        assert result.created_at == sample_task_for_llm.created_at
         
-        # Verify LLM service was called correctly
-        mock_llm_manager.llm_service.generate_text.assert_called_once()
-        call_args = mock_llm_manager.llm_service.generate_text.call_args
+        mock_llm_generator.llm_provider.generate_text.assert_called_once()
+        call_args = mock_llm_generator.llm_provider.generate_text.call_args
         assert call_args[1]['model_type'] == "main"
         
-        # Verify the prompt contains the refinement instruction
         prompt = call_args[0][0]
         assert refinement_instruction in prompt
         assert "refine" in prompt.lower()
 
-    async def test_refine_item_details_handles_invalid_json(self, mock_llm_manager, sample_task_for_llm):
-        """Test that refine_item_details handles invalid JSON responses."""
-        # Arrange
+    async def test_refine_item_details_handles_invalid_json(self, mock_llm_generator, sample_task_for_llm):
         refinement_instruction = "This will return invalid JSON"
         
-        # Mock LLM to return invalid JSON
-        mock_llm_manager.llm_service.generate_text.return_value = "Invalid JSON response"
+        mock_llm_generator.llm_provider.generate_text.side_effect = ValueError("LLM returned invalid JSON")
         
-        # Act & Assert
-        with pytest.raises(ValueError, match="LLM returned invalid JSON"):
-            await mock_llm_manager.refine_item_details(
+        with pytest.raises(RuntimeError, match="Item refinement failed"):
+            await mock_llm_generator.refine_item_details(
                 sample_task_for_llm, refinement_instruction, "main"
             )
 
-    async def test_refine_item_details_preserves_immutable_fields(self, mock_llm_manager, sample_task_for_llm):
-        """Test that refine_item_details preserves ID and created_at fields."""
-        # Arrange
+    async def test_refine_item_details_preserves_immutable_fields(self, mock_llm_generator, sample_task_for_llm):
         refinement_instruction = "Update task"
         original_id = sample_task_for_llm.id
         original_created_at = sample_task_for_llm.created_at
         
-        # Mock LLM response with different ID and created_at (should be overridden)
         different_id = uuid4()
         different_created_at = datetime.now(timezone.utc)
         
-        llm_response = f'''{{
-            "id": "{different_id}",
-            "title": "Updated Task",
-            "description": "Updated description",
-            "status": "IN_PROGRESS",
-            "priority": "HIGH",
-            "created_at": "{different_created_at.isoformat()}",
-            "updated_at": "{datetime.now(timezone.utc).isoformat()}",
-            "subtasks": [],
-            "dependencies": []
-        }}'''
+        updated_task_mock = Task(
+            id=different_id,
+            title="Updated Task",
+            description="Updated description",
+            status=TaskStatus.IN_PROGRESS,
+            priority=TaskPriority.HIGH,
+            created_at=different_created_at,
+            updated_at=datetime.now(timezone.utc)
+        )
         
-        mock_llm_manager.llm_service.generate_text.return_value = llm_response
+        mock_llm_generator.llm_provider.generate_text.return_value = updated_task_mock
         
-        # Act
-        result = await mock_llm_manager.refine_item_details(
+        result = await mock_llm_generator.refine_item_details(
             sample_task_for_llm, refinement_instruction, "main"
         )
         
-        # Assert
-        assert result.id == original_id  # Original ID preserved
-        assert result.created_at == original_created_at  # Original created_at preserved
-        assert result.title == "Updated Task"  # Other fields updated
+        assert result.id == original_id
+        assert result.created_at == original_created_at
+        assert result.title == "Updated Task"
         assert result.status == TaskStatus.IN_PROGRESS

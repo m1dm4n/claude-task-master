@@ -68,7 +68,7 @@ async function removeTask(tasksPath, taskIds) {
 					);
 					if (subtaskIndex === -1) {
 						throw new Error(
-							`Subtask ${subtaskId} not found in parent task ${parentTaskId}`
+							`Task ${subtaskId} not found in parent task ${parentTaskId}`
 						);
 					}
 

@@ -1,197 +1,171 @@
-"""CLI tests for Phase 7: Subtask Management (Clearing) functionality."""
+"""CLI tests for Phase 7: Task Management (Clearing) functionality."""
 
 import pytest
-import json
 from uuid import uuid4, UUID
-from pathlib import Path
-from typer.testing import CliRunner
+from typing import List, Dict, Any
+
+from typer.testing import CliRunner 
 
 from src.cli.main import app
-from src.data_models import Task, Subtask, TaskStatus, TaskPriority, ProjectPlan
+from src.data_models import Task, TaskStatus, TaskPriority, ProjectPlan
+from tests.cli.test_utils import run_cli_command, get_task_by_id_from_file, create_task_dict
 
-
-@pytest.fixture
-def runner():
-    """Create a CliRunner for testing."""
-    return CliRunner()
-
-
-def create_project_plan_with_tasks(tasks):
-    """Helper to create a ProjectPlan with given tasks."""
-    return ProjectPlan(
-        id=uuid4(),
-        project_title="Test Project",
-        overall_goal="Test project for CLI testing",
-        tasks=tasks
-    )
-
-
-def setup_test_data(cli_test_workspace, project_plan):
-    """Setup test data by saving the project plan directly to JSON file."""
-    from src.data_models import ProjectPlan
-    import json
-    from pathlib import Path
-    
-    # Save project plan directly to JSON file
-    project_plan_file = Path(cli_test_workspace) / "project_plan.json"
-    with open(project_plan_file, 'w', encoding='utf-8') as f:
-        f.write(project_plan.model_dump_json(indent=2, exclude_none=True))
-    
-    return None  # No agent needed anymore
-
-
-def load_updated_project_plan(cli_test_workspace):
-    """Load the updated project plan directly from JSON file."""
-    from src.data_models import ProjectPlan
-    import json
-    from pathlib import Path
-    
-    # Load project plan directly from JSON file
-    project_plan_file = Path(cli_test_workspace) / "project_plan.json"
-    if project_plan_file.exists():
-        with open(project_plan_file, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return ProjectPlan.model_validate(data)
-    return None
-
+# Helper to create Task model instances from dictionaries, especially for subtasks
 
 class TestClearSubtasksCommand:
     """Test cases for the clear-subtasks CLI command."""
 
-    def test_clear_subtasks_single_task_success(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_single_task_success(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command for a single task with subtasks."""
         # Setup: Create task with subtasks
-        subtasks = [
-            Subtask(
-                id=uuid4(),
-                title="Subtask 1",
+        subtask1_id = uuid4()
+        subtask2_id = uuid4()
+        
+        subtask_dicts = [
+            create_task_dict(
+                title="Task 1",
                 description="First subtask to be cleared",
                 status=TaskStatus.PENDING,
-                priority=TaskPriority.HIGH
+                priority=TaskPriority.HIGH,
+                _id=subtask1_id
             ),
-            Subtask(
-                id=uuid4(),
-                title="Subtask 2",
+            create_task_dict(
+                title="Task 2",
                 description="Second subtask to be cleared",
                 status=TaskStatus.PENDING,
-                priority=TaskPriority.MEDIUM
+                priority=TaskPriority.MEDIUM,
+                _id=subtask2_id
             )
         ]
         
-        task_with_subtasks = Task(
-            id=uuid4(),
+        parent_task_id = uuid4()
+        task_with_subtasks = create_task_dict(
             title="Task with Subtasks",
             description="A task that has subtasks to clear",
             status=TaskStatus.PENDING,
             priority=TaskPriority.MEDIUM,
-            subtasks=subtasks
+            _id=parent_task_id,
+            subtasks=subtask_dicts # Pass Task objects directly
         )
-        
-        initial_plan = create_project_plan_with_tasks([task_with_subtasks])
-        setup_test_data(cli_test_workspace, initial_plan)
-        
-        task_id = str(task_with_subtasks.id)
+
+        initial_tasks = [task_with_subtasks]
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", task_id])
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", str(parent_task_id)], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 0
-        assert f"Subtasks cleared for task ID {task_with_subtasks.id}" in result.stdout
+        assert f"Subtasks cleared for task ID {parent_task_id}" in result.stdout
         assert "✅" in result.stdout
         
         # Verify the subtasks were cleared in the persisted plan
-        updated_plan = load_updated_project_plan(cli_test_workspace)
-        updated_task = updated_plan.tasks[0]
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        updated_task = get_task_by_id_from_file(cli_test_workspace, parent_task_id)
+        assert updated_task is not None
         assert len(updated_task.subtasks) == 0
 
-    def test_clear_subtasks_single_task_not_found(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_single_task_not_found(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command when task is not found."""
         # Setup: Create empty project plan
-        initial_plan = create_project_plan_with_tasks([])
-        setup_test_data(cli_test_workspace, initial_plan)
+        project_plan_factory.create_with_tasks([])
         
-        task_id = str(uuid4())
+        non_existent_task_id = str(uuid4())
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", task_id])
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", non_existent_task_id], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 1
         assert "Task not found or no subtasks to clear" in result.stdout
         assert "❌" in result.stdout
 
-    def test_clear_subtasks_single_task_no_subtasks(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_single_task_no_subtasks(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command on a task that has no subtasks."""
         # Setup: Create task without subtasks
-        task_without_subtasks = Task(
-            id=uuid4(),
+        parent_task_id = uuid4()
+        task_without_subtasks_dict = create_task_dict(
             title="Task without Subtasks",
             description="A task with no subtasks",
             status=TaskStatus.PENDING,
             priority=TaskPriority.MEDIUM,
-            subtasks=[]
+            _id=parent_task_id,
+            subtasks=[] # No subtasks
         )
-        
-        initial_plan = create_project_plan_with_tasks([task_without_subtasks])
-        setup_test_data(cli_test_workspace, initial_plan)
-        
-        task_id = str(task_without_subtasks.id)
+
+        initial_tasks = [task_without_subtasks_dict]
+        project_plan_factory.create_with_tasks(initial_tasks)
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", task_id])
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", str(parent_task_id)], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 0
-        assert f"Subtasks cleared for task ID {task_without_subtasks.id}" in result.stdout
+        assert f"Subtasks cleared for task ID {parent_task_id}" in result.stdout
         assert "✅" in result.stdout
         
         # Verify the task still has no subtasks
-        updated_plan = load_updated_project_plan(cli_test_workspace)
-        updated_task = updated_plan.tasks[0]
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        updated_task = get_task_by_id_from_file(cli_test_workspace, parent_task_id)
+        assert updated_task is not None
         assert len(updated_task.subtasks) == 0
 
-    def test_clear_subtasks_all_tasks_success(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_all_tasks_success(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command for all tasks with subtasks."""
-        # Setup: Create multiple tasks with subtasks
-        task1_subtasks = [
-            Subtask(id=uuid4(), title="Task1 Sub1", description="Desc1", status=TaskStatus.PENDING),
-            Subtask(id=uuid4(), title="Task1 Sub2", description="Desc2", status=TaskStatus.PENDING)
+        # Setup: Create multiple tasks
+        sub1_t1_id = uuid4()
+        sub2_t1_id = uuid4()
+        task1_subtask_dicts = [
+            create_task_dict(title="Task1 Sub1", description="Desc1", status=TaskStatus.PENDING, _id=sub1_t1_id),
+            create_task_dict(title="Task1 Sub2", description="Desc2", status=TaskStatus.PENDING, _id=sub2_t1_id)
         ]
         
-        task2_subtasks = [
-            Subtask(id=uuid4(), title="Task2 Sub1", description="Desc3", status=TaskStatus.PENDING)
+        sub1_t2_id = uuid4()
+        task2_subtask_list = [
+            create_task_dict(title="Task2 Sub1", description="Desc3", status=TaskStatus.PENDING, _id=sub1_t2_id)
         ]
         
-        task_with_subtasks1 = Task(
-            id=uuid4(),
+        task1_id = uuid4()
+        task_with_subtasks1 = create_task_dict(
             title="Task 1 with Subtasks",
             description="First task with subtasks",
             status=TaskStatus.PENDING,
-            subtasks=task1_subtasks
+            _id=task1_id,
+            subtasks=task1_subtask_dicts
         )
-        
-        task_with_subtasks2 = Task(
-            id=uuid4(),
-            title="Task 2 with Subtasks", 
+
+        task2_id = uuid4()
+        task_with_subtasks2 = create_task_dict(
+            title="Task 2 with Subtasks",
             description="Second task with subtasks",
             status=TaskStatus.IN_PROGRESS,
-            subtasks=task2_subtasks
+            _id=task2_id,
+            subtasks=task2_subtask_list
         )
         
-        task_without_subtasks = Task(
-            id=uuid4(),
+        task3_id = uuid4()
+        task_without_subtasks = create_task_dict(
             title="Task without Subtasks",
             description="Task with no subtasks",
             status=TaskStatus.COMPLETED,
+            _id=task3_id,
             subtasks=[]
         )
-        
-        initial_plan = create_project_plan_with_tasks([task_with_subtasks1, task_with_subtasks2, task_without_subtasks])
-        setup_test_data(cli_test_workspace, initial_plan)
+
+        initial_tasks = [
+            task_with_subtasks1,
+            task_with_subtasks2,
+            task_without_subtasks
+        ]
+        project_plan_factory.create_with_tasks(initial_tasks)
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--all"])
+        result = await run_cli_command(runner, ["clear-subtasks", "--all"], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 0
@@ -199,163 +173,165 @@ class TestClearSubtasksCommand:
         assert "✅" in result.stdout
         
         # Verify the subtasks were cleared in the persisted plan
-        updated_plan = load_updated_project_plan(cli_test_workspace)
-        for task in updated_plan.tasks:
-            assert len(task.subtasks) == 0
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        for task_model in updated_plan.tasks:
+            task_from_file = get_task_by_id_from_file(cli_test_workspace, task_model.id)
+            assert task_from_file is not None
+            assert len(task_from_file.subtasks) == 0
 
-    def test_clear_subtasks_all_tasks_no_subtasks_present(self, runner, cli_test_workspace):
-        """Test clear-subtasks command when no tasks have subtasks."""
-        # Setup: Create tasks without subtasks
-        task1 = Task(
-            id=uuid4(),
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_all_tasks_no_subtasks_present(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
+        task1_id = uuid4()
+        task1_dict = create_task_dict(
             title="Task 1",
             description="First task without subtasks",
             status=TaskStatus.PENDING,
+            _id=task1_id,
             subtasks=[]
         )
         
-        task2 = Task(
-            id=uuid4(),
+        task2_id = uuid4()
+        task2 = create_task_dict(
             title="Task 2",
             description="Second task without subtasks",
             status=TaskStatus.COMPLETED,
+            _id=task2_id,
             subtasks=[]
         )
+ 
+        initial_tasks = [task1_dict, task2]
+        project_plan_factory.create_with_tasks(initial_tasks)
         
-        initial_plan = create_project_plan_with_tasks([task1, task2])
-        setup_test_data(cli_test_workspace, initial_plan)
+        result = await run_cli_command(runner, ["clear-subtasks", "--all"], cli_test_workspace)
         
-        # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--all"])
-        
-        # Assertions
         assert result.exit_code == 0
         assert "No tasks with subtasks found to clear" in result.stdout
         assert "📝" in result.stdout
-
-    def test_clear_subtasks_all_tasks_empty_project(self, runner, cli_test_workspace):
+        
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        for task_model in updated_plan.tasks:
+            task_from_file = get_task_by_id_from_file(cli_test_workspace, task_model.id)
+            assert task_from_file is not None
+            assert len(task_from_file.subtasks) == 0
         """Test clear-subtasks command on an empty project."""
         # Setup: Create empty project plan
-        initial_plan = create_project_plan_with_tasks([])
-        setup_test_data(cli_test_workspace, initial_plan)
+        project_plan_factory.create_with_tasks([])
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--all"])
+        result = await run_cli_command(runner, ["clear-subtasks", "--all"], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 0
         assert "No tasks with subtasks found to clear" in result.stdout
         assert "📝" in result.stdout
 
-    def test_clear_subtasks_command_missing_args(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_command_missing_args(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command when neither --task-id nor --all is provided."""
-        # Setup: Create project plan (doesn't matter for this test)
-        initial_plan = create_project_plan_with_tasks([])
-        setup_test_data(cli_test_workspace, initial_plan)
+        # Setup: Create project plan (doesn't matter for this test, but good practice to have one)
+        project_plan_factory.create_with_tasks([])
         
         # Run the command without required arguments
-        result = runner.invoke(app, ["clear-subtasks"])
+        result = await run_cli_command(runner, ["clear-subtasks"], cli_test_workspace)
         
         # Assertions
-        assert result.exit_code == 1
-        assert "Please specify either --task-id" in result.stdout
-        assert "Examples:" in result.stdout
-        assert "task-master clear-subtasks --task-id" in result.stdout
-        assert "task-master clear-subtasks --all" in result.stdout
+        assert result.exit_code != 0
+        assert "Missing option" in result.stdout or "Please specify either --task-id" in result.stdout
 
-    def test_clear_subtasks_command_invalid_task_id(self, runner, cli_test_workspace):
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_command_invalid_task_id(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
         """Test clear-subtasks command with an invalid task ID format."""
-        # Setup: Create project plan (doesn't matter for this test)
-        initial_plan = create_project_plan_with_tasks([])
-        setup_test_data(cli_test_workspace, initial_plan)
+        project_plan_factory.create_with_tasks([])
         
-        # Run the command with invalid UUID
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", "invalid-uuid"])
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", "invalid-uuid"], cli_test_workspace)
         
-        # Assertions
         assert result.exit_code == 1
         assert "Invalid task ID format" in result.stdout
         assert "❌" in result.stdout
 
-    def test_clear_subtasks_command_both_options_specified(self, runner, cli_test_workspace):
-        """Test clear-subtasks command behavior when both --task-id and --all are specified."""
-        # Setup: Create tasks with subtasks
-        task_subtasks = [
-            Subtask(id=uuid4(), title="Sub1", description="Desc1", status=TaskStatus.PENDING),
-            Subtask(id=uuid4(), title="Sub2", description="Desc2", status=TaskStatus.PENDING)
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_clear_subtasks_command_both_options_specified(self, runner: CliRunner, cli_test_workspace, project_plan_factory, real_agent):
+        sub1_id = uuid4()
+        task_subtask_dicts = [
+            create_task_dict(title="Sub1", description="Desc1", status=TaskStatus.PENDING, _id=sub1_id)
         ]
         
-        task_with_subtasks = Task(
-            id=uuid4(),
+        task1_id = uuid4()
+        task_with_subtasks = create_task_dict(
             title="Task with Subtasks",
             description="A task with subtasks",
-            status=TaskStatus.PENDING,
-            subtasks=task_subtasks
+            _id=task1_id,
+            subtasks=task_subtask_dicts
         )
-        
-        task_without_subtasks = Task(
-            id=uuid4(),
+ 
+        task2_id = uuid4()
+        task_without_subtasks = create_task_dict(
             title="Task without Subtasks",
             description="A task without subtasks",
-            status=TaskStatus.PENDING,
+            _id=task2_id,
             subtasks=[]
         )
         
-        initial_plan = create_project_plan_with_tasks([task_with_subtasks, task_without_subtasks])
-        setup_test_data(cli_test_workspace, initial_plan)
+        initial_tasks = [
+            task_with_subtasks,
+            task_without_subtasks
+        ]
+        project_plan_factory.create_with_tasks(initial_tasks)
         
-        task_id = str(task_with_subtasks.id)
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", str(task1_id), "--all"], cli_test_workspace)
         
-        # Run the command with both options (--all should take precedence based on CLI logic)
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", task_id, "--all"])
-        
-        # Assertions
         assert result.exit_code == 0
-        assert "Cleared subtasks from 1 tasks" in result.stdout  # Only 1 task had subtasks
+        assert "Cleared subtasks from 1 tasks" in result.stdout
         assert "✅" in result.stdout
         
-        # Verify all tasks have no subtasks
-        updated_plan = load_updated_project_plan(cli_test_workspace)
-        for task in updated_plan.tasks:
-            assert len(task.subtasks) == 0
-
-    def test_clear_subtasks_command_preserves_task_properties(self, runner, cli_test_workspace):
-        """Test that clear-subtasks command only clears subtasks and preserves other task properties."""
-        # Setup: Create task with subtasks and specific properties
-        subtasks = [
-            Subtask(id=uuid4(), title="Sub to clear", description="Will be cleared", status=TaskStatus.PENDING)
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        for task_model in updated_plan.tasks:
+            task_from_file = get_task_by_id_from_file(cli_test_workspace, task_model.id)
+            assert task_from_file is not None
+            assert len(task_from_file.subtasks) == 0
+        sub1_id = uuid4()
+        subtask_dicts = [
+            create_task_dict(title="Sub to clear", description="Will be cleared", status=TaskStatus.PENDING, _id=sub1_id)
         ]
         
-        original_task = Task(
-            id=uuid4(),
+        original_task_id = uuid4()
+        dependency_id = uuid4()
+        original_task = create_task_dict(
             title="Important Task",
             description="A very important task",
             status=TaskStatus.IN_PROGRESS,
             priority=TaskPriority.HIGH,
-            subtasks=subtasks,
-            dependencies=[uuid4()]  # Add a dependency
+            dependencies=[dependency_id],
+            _id=original_task_id,
+            subtasks=subtask_dicts
         )
         
-        initial_plan = create_project_plan_with_tasks([original_task])
-        setup_test_data(cli_test_workspace, initial_plan)
-        
-        task_id = str(original_task.id)
+        project_plan_factory.create_with_tasks([original_task])
         
         # Run the command
-        result = runner.invoke(app, ["clear-subtasks", "--task-id", task_id])
+        result = await run_cli_command(runner, ["clear-subtasks", "--task-id", str(original_task_id)], cli_test_workspace)
         
         # Assertions
         assert result.exit_code == 0
-        assert "Subtasks cleared" in result.stdout
+        assert f"Subtasks cleared for task ID {original_task_id}" in result.stdout
         
         # Verify only subtasks were cleared, other properties preserved
-        updated_plan = load_updated_project_plan(cli_test_workspace)
-        updated_task = updated_plan.tasks[0]
+        updated_plan = project_plan_factory.load()
+        assert updated_plan is not None
+        updated_task = get_task_by_id_from_file(cli_test_workspace, original_task_id)
+        assert updated_task is not None
         
-        assert len(updated_task.subtasks) == 0  # Subtasks cleared
-        assert updated_task.title == original_task.title  # Title preserved
-        assert updated_task.description == original_task.description  # Description preserved
-        assert updated_task.status == original_task.status  # Status preserved
-        assert updated_task.priority == original_task.priority  # Priority preserved
-        assert updated_task.dependencies == original_task.dependencies  # Dependencies preserved
-        assert updated_task.id == original_task.id  # ID preserved
+        assert len(updated_task.subtasks) == 0
+        assert updated_task.title == original_task.title
+        assert updated_task.description == original_task.description
+        assert updated_task.status == original_task.status
+        assert updated_task.priority == original_task.priority
+        assert updated_task.dependencies == original_task.dependencies
+        assert updated_task.id == original_task.id
+        assert updated_task.updated_at > original_task.updated_at

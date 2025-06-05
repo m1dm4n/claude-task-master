@@ -16,7 +16,7 @@ import { createLogWrapper } from '../../tools/utils.js';
  *
  * @param {Object} args - Command arguments containing id, prompt, useResearch, tasksJsonPath, and projectRoot.
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - Subtask ID in format "parent.sub".
+ * @param {string} args.id - Task ID in format "parent.sub".
  * @param {string} args.prompt - Information to append to the subtask.
  * @param {boolean} [args.research] - Whether to use research role.
  * @param {string} [args.projectRoot] - Project root path.
@@ -73,7 +73,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 		// Validate subtask ID format
 		const subtaskId = id;
 		if (typeof subtaskId !== 'string' && typeof subtaskId !== 'number') {
-			const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Subtask ID must be a string or number.`;
+			const errorMessage = `Invalid subtask ID type: ${typeof subtaskId}. Task ID must be a string or number.`;
 			log.error(errorMessage);
 			return {
 				success: false,
@@ -84,7 +84,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 
 		const subtaskIdStr = String(subtaskId);
 		if (!subtaskIdStr.includes('.')) {
-			const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Subtask ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
+			const errorMessage = `Invalid subtask ID format: ${subtaskIdStr}. Task ID must be in format "parentId.subtaskId" (e.g., "5.2").`;
 			log.error(errorMessage);
 			return {
 				success: false,
@@ -124,7 +124,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 			);
 
 			if (!coreResult || coreResult.updatedSubtask === null) {
-				const message = `Subtask ${id} or its parent task not found.`;
+				const message = `Task ${id} or its parent task not found.`;
 				logWrapper.error(message);
 				return {
 					success: false,
@@ -133,7 +133,7 @@ export async function updateSubtaskByIdDirect(args, log, context = {}) {
 				};
 			}
 
-			// Subtask updated successfully
+			// Task updated successfully
 			const successMessage = `Successfully updated subtask with ID ${subtaskIdStr}`;
 			logWrapper.success(successMessage);
 			return {

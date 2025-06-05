@@ -134,7 +134,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Quickly add newly identified tasks during development.
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 7. Add Subtask (`add_subtask`)
+### 7. Add Task (`add_subtask`)
 
 *   **MCP Tool:** `add_subtask`
 *   **CLI Command:** `task-master add-subtask [options]`
@@ -177,7 +177,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
 *   **Usage:** Refine a specific task based on new understanding or feedback. Example CLI: `task-master update-task --id='15' --prompt='Clarification: Use PostgreSQL instead of MySQL.\nUpdate schema details...'`
 *   **Important:** This MCP tool makes AI calls and can take up to a minute to complete. Please inform users to hang tight while the operation is in progress.
 
-### 10. Update Subtask (`update_subtask`)
+### 10. Update Task (`update_subtask`)
 
 *   **MCP Tool:** `update_subtask`
 *   **CLI Command:** `task-master update-subtask [options]`
@@ -257,7 +257,7 @@ This document provides a detailed reference for interacting with Taskmaster, cov
     *   `file`: `Path to your Taskmaster 'tasks.json' file. Default relies on auto-detection.` (CLI: `-f, --file <file>`)
 *   **Usage:** Used before regenerating subtasks with `expand_task` if the previous breakdown needs replacement.
 
-### 16. Remove Subtask (`remove_subtask`)
+### 16. Remove Task (`remove_subtask`)
 
 *   **MCP Tool:** `remove_subtask`
 *   **CLI Command:** `task-master remove-subtask [options]`

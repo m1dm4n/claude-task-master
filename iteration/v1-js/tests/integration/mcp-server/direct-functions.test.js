@@ -34,14 +34,14 @@ const mockHandleAnthropicStream = jest.fn().mockResolvedValue(
 	JSON.stringify([
 		{
 			id: 1,
-			title: 'Mock Subtask 1',
+			title: 'Mock Task 1',
 			description: 'First mock subtask',
 			dependencies: [],
 			details: 'Implementation details for mock subtask 1'
 		},
 		{
 			id: 2,
-			title: 'Mock Subtask 2',
+			title: 'Mock Task 2',
 			description: 'Second mock subtask',
 			dependencies: [1],
 			details: 'Implementation details for mock subtask 2'
@@ -51,14 +51,14 @@ const mockHandleAnthropicStream = jest.fn().mockResolvedValue(
 const mockParseSubtasksFromText = jest.fn().mockReturnValue([
 	{
 		id: 1,
-		title: 'Mock Subtask 1',
+		title: 'Mock Task 1',
 		description: 'First mock subtask',
 		status: 'pending',
 		dependencies: []
 	},
 	{
 		id: 2,
-		title: 'Mock Subtask 2',
+		title: 'Mock Task 2',
 		description: 'Second mock subtask',
 		status: 'pending',
 		dependencies: [1]
@@ -76,14 +76,14 @@ const mockExpandTask = jest
 					? [
 							{
 								id: 1,
-								title: 'Research-Backed Subtask 1',
+								title: 'Research-Backed Task 1',
 								description: 'First research-backed subtask',
 								status: 'pending',
 								dependencies: []
 							},
 							{
 								id: 2,
-								title: 'Research-Backed Subtask 2',
+								title: 'Research-Backed Task 2',
 								description: 'Second research-backed subtask',
 								status: 'pending',
 								dependencies: [1]
@@ -92,14 +92,14 @@ const mockExpandTask = jest
 					: [
 							{
 								id: 1,
-								title: 'Mock Subtask 1',
+								title: 'Mock Task 1',
 								description: 'First mock subtask',
 								status: 'pending',
 								dependencies: []
 							},
 							{
 								id: 2,
-								title: 'Mock Subtask 2',
+								title: 'Mock Task 2',
 								description: 'Second mock subtask',
 								status: 'pending',
 								dependencies: [1]

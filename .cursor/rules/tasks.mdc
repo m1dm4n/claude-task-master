@@ -28,7 +28,7 @@ alwaysApply: false
   };
   ```
 
-- **Subtask Structure**:
+- **Task Structure**:
   - ✅ DO: Use consistent properties across subtasks
   - ✅ DO: Maintain simple numeric IDs within parent tasks
   - ❌ DON'T: Duplicate parent task properties in subtasks
@@ -37,7 +37,7 @@ alwaysApply: false
   // ✅ DO: Structure subtasks consistently
   const subtask = {
     id: nextSubtaskId, // Simple numeric ID, unique within the parent task
-    title: "Subtask title",
+    title: "Task title",
     description: "Brief subtask description",
     status: "pending",
     dependencies: [], // Can include numeric IDs (other subtasks) or full task IDs
@@ -161,7 +161,7 @@ alwaysApply: false
   }
   ```
 
-- **Subtask Inclusion**:
+- **Task Inclusion**:
   - ✅ DO: Include subtasks in parent task files
   - ✅ DO: Use consistent indentation for subtask sections
   - ✅ DO: Display subtask dependencies with proper formatting

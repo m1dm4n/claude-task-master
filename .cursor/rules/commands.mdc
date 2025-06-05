@@ -294,7 +294,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   ```javascript
   // ✅ DO: Display success with next steps
   console.log(boxen(
-    chalk.white.bold(`Subtask ${parentId}.${subtask.id} Added Successfully`) + '\n\n' +
+    chalk.white.bold(`Task ${parentId}.${subtask.id} Added Successfully`) + '\n\n' +
     chalk.white(`Title: ${subtask.title}`) + '\n' +
     chalk.white(`Status: ${getStatusWithColor(subtask.status)}`) + '\n' +
     (dependencies.length > 0 ? chalk.white(`Dependencies: ${dependencies.join(', ')}`) + '\n' : '') +
@@ -453,9 +453,9 @@ When implementing commands that delete or remove data (like `remove-task` or `re
   import { addDependency } from './dependency-manager.js';
   ```
 
-## Subtask Management Commands
+## Task Management Commands
 
-- **Add Subtask Command Structure**:
+- **Add Task Command Structure**:
   ```javascript
   // ✅ DO: Follow this structure for adding subtasks
   programInstance
@@ -482,7 +482,7 @@ When implementing commands that delete or remove data (like `remove-task` or `re
     });
   ```
 
-- **Remove Subtask Command Structure**:
+- **Remove Task Command Structure**:
   ```javascript
   // ✅ DO: Follow this structure for removing subtasks
   programInstance
@@ -567,7 +567,7 @@ Refer to [`commands.js`](mdc:scripts/modules/commands.js) for implementation exa
 // Helper function to show add-subtask command help
 function showAddSubtaskHelp() {
   console.log(boxen(
-    chalk.white.bold('Add Subtask Command Help') + '\n\n' +
+    chalk.white.bold('Add Task Command Help') + '\n\n' +
     chalk.cyan('Usage:') + '\n' +
     `  task-master add-subtask --parent=<id> [options]\n\n` +
     chalk.cyan('Options:') + '\n' +
@@ -591,11 +591,11 @@ function showAddSubtaskHelp() {
 // Helper function to show remove-subtask command help
 function showRemoveSubtaskHelp() {
   console.log(boxen(
-    chalk.white.bold('Remove Subtask Command Help') + '\n\n' +
+    chalk.white.bold('Remove Task Command Help') + '\n\n' +
     chalk.cyan('Usage:') + '\n' +
     `  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
     chalk.cyan('Options:') + '\n' +
-    '  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
+    '  -i, --id <id>       Task ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
     '  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
     '  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
     '  --skip-generate     Skip regenerating task files\n\n' +

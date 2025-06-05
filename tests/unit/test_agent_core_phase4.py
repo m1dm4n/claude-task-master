@@ -5,10 +5,16 @@ from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
 # Added ModelConfig
-from src.data_models import Task, Subtask, ProjectPlan, TaskStatus, TaskPriority, ModelConfig
-from src.agent_core import DevTaskAIAssistant
-
-# Helper to create a basic ProjectPlan with tasks and subtasks
+from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority, ModelConfig
+from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority, ModelConfig, AppConfig
+from src.agent_core.assistant import DevTaskAIAssistant
+from src.agent_core.project_io import ProjectIO
+from src.agent_core.task_operations import TaskOperations
+from src.agent_core.llm_config import LLMConfigManager
+from src.agent_core.llm_provider import LLMProvider
+from src.agent_core.llm_generator import LLMGenerator
+from src.agent_core.plan_builder import PlanBuilder
+from src.agent_core.dependency_logic import DependencyManager
 
 
 def create_sample_project_plan():
@@ -25,20 +31,20 @@ def create_sample_project_plan():
                 title="Task 1",
                 description="Description for Task 1",
                 status=TaskStatus.PENDING,
-                priority=TaskPriority.MEDIUM, # Added default priority
-                details="Details for Task 1", # Added
-                testStrategy="Test strategy for Task 1", # Added
-                dependencies=[], # Added
+                priority=TaskPriority.MEDIUM,
+                details="Details for Task 1",
+                testStrategy="Test strategy for Task 1",
+                dependencies=[],
                 subtasks=[
-                    Subtask(
+                    Task(
                         id=subtask1_1_id,
-                        title="Subtask 1.1",
-                        description="Description for Subtask 1.1",
+                        title="Task 1.1",
+                        description="Description for Task 1.1",
                         status=TaskStatus.PENDING,
-                        priority=TaskPriority.MEDIUM, # Added default priority
-                        details="Details for Subtask 1.1", # Added
-                        testStrategy="Test strategy for Subtask 1.1", # Added
-                        dependencies=[] # Added
+                        priority=TaskPriority.MEDIUM,
+                        details="Details for Task 1.1",
+                        testStrategy="Test strategy for Task 1.1",
+                        dependencies=[]
                     )
                 ]
             ),
@@ -47,70 +53,96 @@ def create_sample_project_plan():
                 title="Task 2",
                 description="Description for Task 2",
                 status=TaskStatus.IN_PROGRESS,
-                priority=TaskPriority.MEDIUM, # Added default priority
-                details="Details for Task 2", # Added
-                testStrategy="Test strategy for Task 2", # Added
-                dependencies=[], # Added
-                subtasks=[] # Added, as Task expects subtasks list
+                priority=TaskPriority.MEDIUM,
+                details="Details for Task 2",
+                testStrategy="Test strategy for Task 2",
+                dependencies=[],
+                subtasks=[]
             )
         ]
     )
     return plan, task1_id, subtask1_1_id, task2_id
 
 
-# PersistenceManager fixture removed - now using JSON-based persistence
-
-
 @pytest.fixture
 def agent_with_plan():
-    with patch('src.config_manager.ConfigManager') as MockConfigManagerClass:
-        # Create proper AppConfig for JSON-based persistence
-        from src.data_models import AppConfig, ModelConfig
+    with patch('src.config_manager.ConfigManager') as MockConfigManager, \
+         patch('src.agent_core.llm_config.LLMConfigManager') as MockLLMConfigManager, \
+         patch('src.agent_core.llm_provider.LLMProvider') as MockLLMProvider, \
+         patch('src.agent_core.llm_generator.LLMGenerator') as MockLLMGenerator, \
+         patch('src.agent_core.plan_builder.PlanBuilder') as MockPlanBuilder, \
+         patch('src.agent_core.project_io.ProjectIO') as MockProjectIO, \
+         patch('src.agent_core.task_operations.TaskOperations') as MockTaskOperations, \
+         patch('src.agent_core.dependency_logic.DependencyManager') as MockDependencyManager:
+
+        mock_config_manager_instance = MockConfigManager.return_value
         test_config = AppConfig(
             main_model=ModelConfig(model_name="test-main-model", provider="google"),
             project_plan_file="project_plan.json",
             tasks_dir="tasks"
         )
-        mock_cm_instance = MockConfigManagerClass.return_value
-        mock_cm_instance.get_model_config.return_value = test_config.main_model
-        mock_cm_instance.config = test_config
+        mock_config_manager_instance.config = test_config
+        mock_config_manager_instance.get_model_config.return_value = test_config.main_model
 
-        agent = DevTaskAIAssistant(workspace_path="dummy_workspace")
+        mock_project_io_instance = MockProjectIO.return_value
         sample_plan, _, _, _ = create_sample_project_plan()
-        # Set the plan through the project manager
-        agent.project_manager._project_plan = sample_plan
-        # Update config manager references
-        agent.config_manager = mock_cm_instance
-        agent.llm_manager.config_manager = mock_cm_instance  # Also update llm_manager's ref
-        return agent
+        mock_project_io_instance.get_current_project_plan.return_value = sample_plan
+        mock_project_io_instance.save_project_plan.return_value = None
+
+        agent = DevTaskAIAssistant(workspace_dir="dummy_workspace")
+        agent.config_manager = mock_config_manager_instance
+        agent.llm_config_manager = MockLLMConfigManager.return_value
+        agent.llm_provider = MockLLMProvider.return_value
+        agent.llm_generator = MockLLMGenerator.return_value
+        agent.plan_builder = MockPlanBuilder.return_value
+        agent.project_io = mock_project_io_instance
+        agent.task_operations = MockTaskOperations.return_value
+        agent.dependency_manager = MockDependencyManager.return_value
+
+        yield agent
+
 @pytest.fixture
 def agent_no_plan():
-    with patch('src.config_manager.ConfigManager') as MockConfigManagerClass:
-        # Create proper AppConfig for JSON-based persistence
-        from src.data_models import AppConfig, ModelConfig
+    with patch('src.config_manager.ConfigManager') as MockConfigManager, \
+         patch('src.agent_core.llm_config.LLMConfigManager') as MockLLMConfigManager, \
+         patch('src.agent_core.llm_provider.LLMProvider') as MockLLMProvider, \
+         patch('src.agent_core.llm_generator.LLMGenerator') as MockLLMGenerator, \
+         patch('src.agent_core.plan_builder.PlanBuilder') as MockPlanBuilder, \
+         patch('src.agent_core.project_io.ProjectIO') as MockProjectIO, \
+         patch('src.agent_core.task_operations.TaskOperations') as MockTaskOperations, \
+         patch('src.agent_core.dependency_logic.DependencyManager') as MockDependencyManager:
+
+        mock_config_manager_instance = MockConfigManager.return_value
         test_config = AppConfig(
             main_model=ModelConfig(model_name="test-main-model", provider="google"),
             project_plan_file="project_plan.json",
             tasks_dir="tasks"
         )
-        mock_cm_instance = MockConfigManagerClass.return_value
-        mock_cm_instance.get_model_config.return_value = test_config.main_model
-        mock_cm_instance.config = test_config
+        mock_config_manager_instance.config = test_config
+        mock_config_manager_instance.get_model_config.return_value = test_config.main_model
 
-        agent = DevTaskAIAssistant(workspace_path="dummy_workspace")
-        agent.project_manager._project_plan = None  # Ensure no plan is loaded
-        agent.config_manager = mock_cm_instance
-        agent.llm_manager.config_manager = mock_cm_instance
-        return agent
+        mock_project_io_instance = MockProjectIO.return_value
+        mock_project_io_instance.get_current_project_plan.return_value = None
+        mock_project_io_instance.save_project_plan.return_value = None
 
+        agent = DevTaskAIAssistant(workspace_dir="dummy_workspace")
+        agent.config_manager = mock_config_manager_instance
+        agent.llm_config_manager = MockLLMConfigManager.return_value
+        agent.llm_provider = MockLLMProvider.return_value
+        agent.llm_generator = MockLLMGenerator.return_value
+        agent.plan_builder = MockPlanBuilder.return_value
+        agent.project_io = mock_project_io_instance
+        agent.task_operations = MockTaskOperations.return_value
+        agent.dependency_manager = MockDependencyManager.return_value
+
+        yield agent
 
 # --- Test Cases for update_item_status ---
 def test_update_status_single_task_success(agent_with_plan):
     plan, task1_id, _, _ = create_sample_project_plan()
     # re-assign to ensure fresh copy for this test
-    agent_with_plan.project_manager._project_plan = plan
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
-    # Ensure original status is PENDING
     current_plan = agent_with_plan.get_current_project_plan()
     original_task = next(
         t for t in current_plan.tasks if t.id == task1_id)
@@ -126,12 +158,11 @@ def test_update_status_single_task_success(agent_with_plan):
         t for t in updated_plan.tasks if t.id == task1_id)
     assert updated_task.status == TaskStatus.COMPLETED
     assert updated_task.updated_at > original_updated_at
-    # JSON persistence saves automatically
 
 
 def test_update_status_single_subtask_success(agent_with_plan):
     plan, task1_id, subtask1_1_id, _ = create_sample_project_plan()
-    agent_with_plan.project_manager._project_plan = plan
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
     current_plan = agent_with_plan.get_current_project_plan()
     parent_task = next(
@@ -152,11 +183,10 @@ def test_update_status_single_subtask_success(agent_with_plan):
         st for st in updated_parent_task.subtasks if st.id == subtask1_1_id)
     assert updated_subtask.status == TaskStatus.IN_PROGRESS
     assert updated_subtask.updated_at > original_updated_at
-    # JSON persistence saves automatically
 
 def test_update_status_multiple_items_mix_success(agent_with_plan):
     plan, task1_id, subtask1_1_id, task2_id = create_sample_project_plan()
-    agent_with_plan.project_manager._project_plan = plan
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
     current_plan = agent_with_plan.get_current_project_plan()
     original_task1 = next(
@@ -190,15 +220,13 @@ def test_update_status_multiple_items_mix_success(agent_with_plan):
     assert updated_subtask1_1.updated_at > original_subtask1_1_ua
     assert updated_task2.status == TaskStatus.COMPLETED
     assert updated_task2.updated_at > original_task2_ua
-    # JSON persistence saves automatically
 
 
 def test_update_status_non_existent_id(agent_with_plan):
     non_existent_id = uuid4()
     plan, task1_id, _, _ = create_sample_project_plan()
-    agent_with_plan.project_manager._project_plan = plan
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
-    # Update one valid, one invalid
     results = agent_with_plan.update_item_status(
         [task1_id, non_existent_id], TaskStatus.COMPLETED)
 
@@ -207,7 +235,6 @@ def test_update_status_non_existent_id(agent_with_plan):
     updated_task1 = next(
         t for t in updated_plan.tasks if t.id == task1_id)
     assert updated_task1.status == TaskStatus.COMPLETED
-    # JSON persistence saves automatically  # Called because one succeeded
 
 
 def test_update_status_all_non_existent_ids(agent_with_plan):
@@ -226,16 +253,12 @@ def test_update_status_project_plan_is_none(agent_no_plan):
     some_id = uuid4()
     results = agent_no_plan.update_item_status([some_id], TaskStatus.COMPLETED)
     assert results == {some_id: False}
-    # JSON persistence handles saving automatically
 
 
 @pytest.mark.parametrize("target_status", list(TaskStatus))
 def test_update_status_with_all_valid_statuses(agent_with_plan, target_status):
     plan, task1_id, _, task2_id = create_sample_project_plan()
-    agent_with_plan.project_manager._project_plan = plan  # Fresh plan
-
-    # Reset mock call count for save_project_plan for each parameter
-    # JSON persistence handles saving automatically
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
     current_plan = agent_with_plan.get_current_project_plan()
     original_task1 = next(
@@ -251,11 +274,7 @@ def test_update_status_with_all_valid_statuses(agent_with_plan, target_status):
         t for t in updated_plan.tasks if t.id == task1_id)
     assert updated_task1.status == target_status
 
-    # updated_at should change even if status was already the target_status
     assert updated_task1.updated_at > original_task1_ua
-
-    # save_project_plan should be called because item was found and processed (updated_at changed)
-    # JSON persistence saves automatically
 
 
 def test_update_status_save_not_called_if_no_valid_ids_processed(agent_with_plan):
@@ -263,7 +282,6 @@ def test_update_status_save_not_called_if_no_valid_ids_processed(agent_with_plan
     results = agent_with_plan.update_item_status(
         [non_existent_id], TaskStatus.COMPLETED)
     assert results == {non_existent_id: False}
-    # JSON persistence handles saving automatically
 
 
 def test_update_status_save_called_if_status_is_same_but_item_processed(agent_with_plan):
@@ -271,28 +289,24 @@ def test_update_status_save_called_if_status_is_same_but_item_processed(agent_wi
     Tests if save is called when an item is processed, its status is already the target status,
     but updated_at changes. The current implementation WILL save in this case.
     """
-    plan, _, _, task2_id = create_sample_project_plan()  # task2 is IN_PROGRESS
-    agent_with_plan.project_manager._project_plan = plan
+    plan, _, _, task2_id = create_sample_project_plan()
+    agent_with_plan.project_io.get_current_project_plan.return_value = plan
 
     current_plan = agent_with_plan.get_current_project_plan()
     task2 = next(
         t for t in current_plan.tasks if t.id == task2_id)
-    assert task2.status == TaskStatus.IN_PROGRESS  # Pre-condition
+    assert task2.status == TaskStatus.IN_PROGRESS
     original_task2_ua = task2.updated_at
 
     results = agent_with_plan.update_item_status(
-        [task2_id], TaskStatus.IN_PROGRESS)  # Update to same status
+        [task2_id], TaskStatus.IN_PROGRESS)
 
-    assert results == {task2_id: True}  # Update is reported as success
+    assert results == {task2_id: True}
     updated_plan = agent_with_plan.get_current_project_plan()
     updated_task2 = next(
         t for t in updated_plan.tasks if t.id == task2_id)
     assert updated_task2.status == TaskStatus.IN_PROGRESS
-    # updated_at should still change
     assert updated_task2.updated_at > original_task2_ua
-
-    # According to current agent_core.py logic, save WILL be called as changes_made becomes True.
-    # JSON persistence saves automatically
 
 
 # def test_update_status_save_fails_propagates_failure(agent_with_plan):
@@ -316,4 +330,3 @@ def test_update_status_save_called_if_status_is_same_but_item_processed(agent_wi
 def test_update_status_empty_id_list(agent_with_plan):
     results = agent_with_plan.update_item_status([], TaskStatus.COMPLETED)
     assert results == {}
-    # JSON persistence handles saving automatically

@@ -989,7 +989,7 @@ function registerCommands(programInstance) {
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-i, --id <id>',
-			'Subtask ID to update in format "parentId.subtaskId" (required)'
+			'Task ID to update in format "parentId.subtaskId" (required)'
 		)
 		.option(
 			'-p, --prompt <text>',
@@ -1016,7 +1016,7 @@ function registerCommands(programInstance) {
 				if (!subtaskId.includes('.')) {
 					console.error(
 						chalk.red(
-							`Error: Invalid subtask ID format: ${subtaskId}. Subtask ID must be in format "parentId.subtaskId"`
+							`Error: Invalid subtask ID format: ${subtaskId}. Task ID must be in format "parentId.subtaskId"`
 						)
 					);
 					console.log(
@@ -1763,7 +1763,7 @@ function registerCommands(programInstance) {
 					console.log(
 						boxen(
 							chalk.white.bold(
-								`Subtask ${parentId}.${subtask.id} Added Successfully`
+								`Task ${parentId}.${subtask.id} Added Successfully`
 							) +
 								'\n\n' +
 								chalk.white(`Title: ${subtask.title}`) +
@@ -1833,7 +1833,7 @@ function registerCommands(programInstance) {
 	function showAddSubtaskHelp() {
 		console.log(
 			boxen(
-				chalk.white.bold('Add Subtask Command Help') +
+				chalk.white.bold('Add Task Command Help') +
 					'\n\n' +
 					chalk.cyan('Usage:') +
 					'\n' +
@@ -1865,7 +1865,7 @@ function registerCommands(programInstance) {
 		.option('-f, --file <file>', 'Path to the tasks file', 'tasks/tasks.json')
 		.option(
 			'-i, --id <id>',
-			'Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated for multiple subtasks)'
+			'Task ID(s) to remove in format "parentId.subtaskId" (can be comma-separated for multiple subtasks)'
 		)
 		.option(
 			'-c, --convert',
@@ -1897,7 +1897,7 @@ function registerCommands(programInstance) {
 					if (!subtaskId.includes('.')) {
 						console.error(
 							chalk.red(
-								`Error: Subtask ID "${subtaskId}" must be in format "parentId.subtaskId"`
+								`Error: Task ID "${subtaskId}" must be in format "parentId.subtaskId"`
 							)
 						);
 						showRemoveSubtaskHelp();
@@ -1923,7 +1923,7 @@ function registerCommands(programInstance) {
 						console.log(
 							boxen(
 								chalk.white.bold(
-									`Subtask ${subtaskId} Converted to Task #${result.id}`
+									`Task ${subtaskId} Converted to Task #${result.id}`
 								) +
 									'\n\n' +
 									chalk.white(`Title: ${result.title}`) +
@@ -1955,7 +1955,7 @@ function registerCommands(programInstance) {
 						// Display success message for deleted subtask
 						console.log(
 							boxen(
-								chalk.white.bold(`Subtask ${subtaskId} Removed`) +
+								chalk.white.bold(`Task ${subtaskId} Removed`) +
 									'\n\n' +
 									chalk.white('The subtask has been successfully deleted.'),
 								{
@@ -1984,14 +1984,14 @@ function registerCommands(programInstance) {
 	function showRemoveSubtaskHelp() {
 		console.log(
 			boxen(
-				chalk.white.bold('Remove Subtask Command Help') +
+				chalk.white.bold('Remove Task Command Help') +
 					'\n\n' +
 					chalk.cyan('Usage:') +
 					'\n' +
 					`  task-master remove-subtask --id=<parentId.subtaskId> [options]\n\n` +
 					chalk.cyan('Options:') +
 					'\n' +
-					'  -i, --id <id>       Subtask ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
+					'  -i, --id <id>       Task ID(s) to remove in format "parentId.subtaskId" (can be comma-separated, required)\n' +
 					'  -c, --convert       Convert the subtask to a standalone task instead of deleting it\n' +
 					'  -f, --file <file>   Path to the tasks file (default: "tasks/tasks.json")\n' +
 					'  --skip-generate     Skip regenerating task files\n\n' +
@@ -2116,9 +2116,9 @@ function registerCommands(programInstance) {
 					existingTasksToRemove.forEach(({ id, task }) => {
 						if (!task) return; // Should not happen due to taskExists check, but safeguard
 						if (task.isSubtask) {
-							// Subtask - title is directly on the task object
+							// Task - title is directly on the task object
 							console.log(
-								chalk.white(`  Subtask ${id}: ${task.title || '(no title)'}`)
+								chalk.white(`  Task ${id}: ${task.title || '(no title)'}`)
 							);
 							// Optionally show parent context if available
 							if (task.parentTask) {

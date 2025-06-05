@@ -69,7 +69,7 @@ function findNextTask(tasks, complexityReport = null) {
 				if (depsSatisfied) {
 					candidateSubtasks.push({
 						id: `${parent.id}.${st.id}`,
-						title: st.title || `Subtask ${st.id}`,
+						title: st.title || `Task ${st.id}`,
 						status: st.status || 'pending',
 						priority: st.priority || parent.priority || 'medium',
 						dependencies: fullDeps,

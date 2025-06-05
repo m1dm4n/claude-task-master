@@ -5,6 +5,6 @@ for interacting with the DevTask AI Assistant.
 """
 
 from .main import app
-from .utils import get_agent
+from .utils import parse_uuid_or_exit
 
-__all__ = ["app", "get_agent"]
+__all__ = ["app", "parse_uuid_or_exit"]

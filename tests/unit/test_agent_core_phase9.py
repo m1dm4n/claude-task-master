@@ -2,13 +2,20 @@
 
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, Mock
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 
-from src.agent_core.main import DevTaskAIAssistant
-from src.agent_core.llm_manager import LLMManager
-from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority
+from src.agent_core.assistant import DevTaskAIAssistant
+from src.agent_core.llm_generator import LLMGenerator
+from src.agent_core.project_io import ProjectIO
+from src.agent_core.task_operations import TaskOperations
+from src.agent_core.llm_config import LLMConfigManager
+from src.agent_core.llm_provider import LLMProvider
+from src.agent_core.plan_builder import PlanBuilder
+from src.agent_core.dependency_logic import DependencyManager
+from src.data_models import Task, ProjectPlan, TaskStatus, TaskPriority, AppConfig, ModelConfig
+from src.config_manager import ConfigManager
 
 
 class TestAddNewTask:
@@ -41,182 +48,129 @@ class TestAddNewTask:
             tasks=[]
         )
 
-    def test_add_new_task_appends_to_plan_and_saves(self, mocker, sample_task_data, sample_project_plan):
-        """Test that add_new_task appends a new task to the plan and saves it."""
-        # Mock the dependencies
-        mock_config_manager = MagicMock()
-        mock_project_manager = MagicMock()
-        mock_llm_manager = MagicMock()
+    @pytest.fixture
+    def mock_agent(self, tmp_path):
+        with patch('src.config_manager.ConfigManager') as MockConfigManager, \
+             patch('src.agent_core.llm_config.LLMConfigManager') as MockLLMConfigManager, \
+             patch('src.agent_core.llm_provider.LLMProvider') as MockLLMProvider, \
+             patch('src.agent_core.llm_generator.LLMGenerator') as MockLLMGenerator, \
+             patch('src.agent_core.plan_builder.PlanBuilder') as MockPlanBuilder, \
+             patch('src.agent_core.project_io.ProjectIO') as MockProjectIO, \
+             patch('src.agent_core.task_operations.TaskOperations') as MockTaskOperations, \
+             patch('src.agent_core.dependency_logic.DependencyManager') as MockDependencyManager:
+
+            mock_config_manager_instance = MockConfigManager.return_value
+            test_config = AppConfig(
+                main_model=ModelConfig(model_name="test-model", provider="test"),
+                project_plan_file="project_plan.json",
+                tasks_dir="tasks"
+            )
+            mock_config_manager_instance.config = test_config
+            mock_config_manager_instance.get_model_config.return_value = test_config.main_model
+
+            mock_project_io_instance = MockProjectIO.return_value
+            mock_project_io_instance.get_current_project_plan.return_value = Mock() # Default to a mock plan
+            mock_project_io_instance.save_project_plan.return_value = MagicMock()
+
+            agent_instance = DevTaskAIAssistant("dummy_workspace")
+            agent_instance.config_manager = mock_config_manager_instance
+            agent_instance.llm_config_manager = MockLLMConfigManager.return_value
+            agent_instance.llm_provider = MockLLMProvider.return_value
+            agent_instance.llm_generator = MockLLMGenerator.return_value
+            agent_instance.plan_builder = MockPlanBuilder.return_value
+            agent_instance.project_io = mock_project_io_instance
+            agent_instance.task_operations = MockTaskOperations.return_value
+            agent_instance.dependency_manager = MockDependencyManager.return_value
+            
+            yield agent_instance
+
+    async def test_add_new_task_appends_to_plan_and_saves(self, mock_agent, sample_task_data, sample_project_plan):
+        mock_agent.project_io.get_current_project_plan.return_value = sample_project_plan
+        mock_agent.llm_generator.generate_single_task = AsyncMock(return_value=sample_task_data)
         
-        # Setup the agent with mocked dependencies
-        agent = DevTaskAIAssistant()
-        agent.config_manager = mock_config_manager
-        agent.project_manager = mock_project_manager
-        agent.llm_manager = mock_llm_manager
-        
-        # Mock the project manager methods
-        mock_project_manager.get_current_project_plan.return_value = sample_project_plan
-        mock_project_manager.save_project_plan = MagicMock()
-        
-        # Mock the LLM manager to return our sample task
-        mock_llm_manager.generate_single_task = AsyncMock(return_value=sample_task_data)
-        
-        # Call the method
-        result = asyncio.run(agent.add_new_task(
+        result = await mock_agent.add_new_task(
             description="Create user authentication system",
             use_research=False,
             dependencies_str=None,
             priority_str="HIGH"
-        ))
+        )
         
-        # Verify the task was added to the plan
         assert result is not None
         assert result.title == sample_task_data.title
         assert result.priority == TaskPriority.HIGH
         assert len(sample_project_plan.tasks) == 1
         assert sample_project_plan.tasks[0] == sample_task_data
         
-        # Verify LLM manager was called correctly
-        mock_llm_manager.generate_single_task.assert_called_once()
-        call_args = mock_llm_manager.generate_single_task.call_args
-        assert call_args[0][0] == "Create user authentication system"  # description
-        assert call_args[0][2] == "main"  # model_type
+        mock_agent.llm_generator.generate_single_task.assert_called_once()
+        call_args = mock_agent.llm_generator.generate_single_task.call_args
+        assert call_args[0][0] == "Create user authentication system"
+        assert call_args[1]["model_type"] == "main"
         
-        # Verify save was called
-        mock_project_manager.save_project_plan.assert_called_once_with(sample_project_plan)
+        mock_agent.project_io.save_project_plan.assert_called_once_with(sample_project_plan)
 
-    def test_add_new_task_with_dependencies_and_priority(self, mocker, sample_task_data, sample_project_plan):
-        """Test add_new_task with dependencies and custom priority."""
-        # Mock the dependencies
-        mock_config_manager = MagicMock()
-        mock_project_manager = MagicMock()
-        mock_llm_manager = MagicMock()
+    async def test_add_new_task_with_dependencies_and_priority(self, mock_agent, sample_task_data, sample_project_plan):
+        mock_agent.project_io.get_current_project_plan.return_value = sample_project_plan
+        mock_agent.llm_generator.generate_single_task = AsyncMock(return_value=sample_task_data)
         
-        # Setup the agent with mocked dependencies
-        agent = DevTaskAIAssistant()
-        agent.config_manager = mock_config_manager
-        agent.project_manager = mock_project_manager
-        agent.llm_manager = mock_llm_manager
-        
-        # Mock the project manager methods
-        mock_project_manager.get_current_project_plan.return_value = sample_project_plan
-        mock_project_manager.save_project_plan = MagicMock()
-        
-        # Mock the LLM manager to return our sample task
-        mock_llm_manager.generate_single_task = AsyncMock(return_value=sample_task_data)
-        
-        # Test with dependencies and priority
         dep_uuid = uuid4()
         dependencies_str = [str(dep_uuid)]
         
-        result = asyncio.run(agent.add_new_task(
+        result = await mock_agent.add_new_task(
             description="Create user dashboard",
             use_research=True,
             dependencies_str=dependencies_str,
             priority_str="CRITICAL"
-        ))
+        )
         
-        # Verify the result
         assert result is not None
         assert result.dependencies == [dep_uuid]
         assert result.priority == TaskPriority.CRITICAL
         
-        # Verify LLM manager was called with research model
-        call_args = mock_llm_manager.generate_single_task.call_args
-        assert call_args[0][2] == "research"  # model_type
+        call_args = mock_agent.llm_generator.generate_single_task.call_args
+        assert call_args[1]["model_type"] == "research"
 
-    def test_add_new_task_handles_llm_failure_gracefully(self, mocker, sample_project_plan):
-        """Test that add_new_task handles LLM failure gracefully."""
-        # Mock the dependencies
-        mock_config_manager = MagicMock()
-        mock_project_manager = MagicMock()
-        mock_llm_manager = MagicMock()
+    async def test_add_new_task_handles_llm_failure_gracefully(self, mock_agent, sample_project_plan):
+        mock_agent.project_io.get_current_project_plan.return_value = sample_project_plan
+        mock_agent.llm_generator.generate_single_task = AsyncMock(return_value=None) # Simulate LLM not generating a task
         
-        # Setup the agent with mocked dependencies
-        agent = DevTaskAIAssistant()
-        agent.config_manager = mock_config_manager
-        agent.project_manager = mock_project_manager
-        agent.llm_manager = mock_llm_manager
-        
-        # Mock the project manager methods
-        mock_project_manager.get_current_project_plan.return_value = sample_project_plan
-        
-        # Mock the LLM manager to raise an exception
-        mock_llm_manager.generate_single_task = AsyncMock(side_effect=RuntimeError("LLM service unavailable"))
-        
-        # Call the method and expect None return
-        result = asyncio.run(agent.add_new_task(
+        result = await mock_agent.add_new_task(
             description="Create user authentication system",
             use_research=False
-        ))
+        )
         
-        # Verify graceful failure
         assert result is None
-        assert len(sample_project_plan.tasks) == 0  # No task should be added
+        assert len(sample_project_plan.tasks) == 0
         
-        # Verify save was not called
-        mock_project_manager.save_project_plan.assert_not_called()
+        mock_agent.project_io.save_project_plan.assert_not_called()
 
-    def test_add_new_task_handles_invalid_dependencies(self, mocker, sample_project_plan):
-        """Test that add_new_task handles invalid dependency IDs gracefully."""
-        # Mock the dependencies
-        mock_config_manager = MagicMock()
-        mock_project_manager = MagicMock()
-        mock_llm_manager = MagicMock()
+    async def test_add_new_task_handles_invalid_dependencies(self, mock_agent, sample_project_plan):
+        mock_agent.project_io.get_current_project_plan.return_value = sample_project_plan
         
-        # Setup the agent with mocked dependencies
-        agent = DevTaskAIAssistant()
-        agent.config_manager = mock_config_manager
-        agent.project_manager = mock_project_manager
-        agent.llm_manager = mock_llm_manager
-        
-        # Mock the project manager methods
-        mock_project_manager.get_current_project_plan.return_value = sample_project_plan
-        
-        # Call with invalid dependency ID
-        result = asyncio.run(agent.add_new_task(
+        result = await mock_agent.add_new_task(
             description="Create user authentication system",
             dependencies_str=["invalid-uuid-format"]
-        ))
+        )
         
-        # Verify graceful failure
         assert result is None
         
-        # Verify LLM manager was not called
-        mock_llm_manager.generate_single_task.assert_not_called()
+        mock_agent.llm_generator.generate_single_task.assert_not_called()
 
-    def test_add_new_task_handles_invalid_priority(self, mocker, sample_project_plan):
-        """Test that add_new_task handles invalid priority gracefully."""
-        # Mock the dependencies
-        mock_config_manager = MagicMock()
-        mock_project_manager = MagicMock()
-        mock_llm_manager = MagicMock()
+    async def test_add_new_task_handles_invalid_priority(self, mock_agent, sample_project_plan):
+        mock_agent.project_io.get_current_project_plan.return_value = sample_project_plan
         
-        # Setup the agent with mocked dependencies
-        agent = DevTaskAIAssistant()
-        agent.config_manager = mock_config_manager
-        agent.project_manager = mock_project_manager
-        agent.llm_manager = mock_llm_manager
-        
-        # Mock the project manager methods
-        mock_project_manager.get_current_project_plan.return_value = sample_project_plan
-        
-        # Mock task generation
         sample_task = Task(
             title="Test task",
             description="Test description",
             status=TaskStatus.PENDING,
             priority=TaskPriority.MEDIUM
         )
-        mock_llm_manager.generate_single_task = AsyncMock(return_value=sample_task)
+        mock_agent.llm_generator.generate_single_task = AsyncMock(return_value=sample_task)
         
-        # Call with invalid priority
-        result = asyncio.run(agent.add_new_task(
+        result = await mock_agent.add_new_task(
             description="Create user authentication system",
             priority_str="INVALID_PRIORITY"
-        ))
+        )
         
-        # Verify graceful failure
         assert result is None
 
 
@@ -260,16 +214,43 @@ class TestGenerateSingleTask:
         '''
         
         # Mock the LLM service to return the sample response
-        mock_llm_service.generate_text = AsyncMock(return_value=sample_llm_response)
+    @pytest.fixture
+    def mock_llm_provider(self):
+        mock_provider = MagicMock()
+        return mock_provider
+
+    @pytest.fixture
+    def llm_generator(self, mock_llm_provider):
+        generator = LLMGenerator(mock_llm_provider)
+        return generator
+
+    async def test_generate_single_task_llm_interaction(self, llm_generator, mock_llm_provider):
+        sample_llm_output = Task(
+            title="Implement user authentication",
+            description="Create a secure user authentication system with login and registration functionality",
+            status=TaskStatus.PENDING,
+            priority=TaskPriority.HIGH,
+            details="Use JWT tokens for session management and bcrypt for password hashing",
+            testStrategy="Unit tests for auth functions, integration tests for auth flow",
+            dependencies=[],
+            subtasks=[
+                Task(
+                    title="Design authentication API endpoints",
+                    description="Define API routes for login, register, logout",
+                    status=TaskStatus.PENDING,
+                    priority=TaskPriority.HIGH
+                )
+            ]
+        )
         
-        # Call the method
-        result = asyncio.run(llm_manager.generate_single_task(
+        mock_llm_provider.generate_text = AsyncMock(return_value=sample_llm_output)
+        
+        result = await llm_generator.generate_single_task(
             description_prompt="Create user authentication system",
             project_context="Project: Web App\nGoal: Build a secure web application",
             model_type="main"
-        ))
+        )
         
-        # Verify the result
         assert isinstance(result, Task)
         assert result.title == "Implement user authentication"
         assert result.description == "Create a secure user authentication system with login and registration functionality"
@@ -278,45 +259,36 @@ class TestGenerateSingleTask:
         assert result.details == "Use JWT tokens for session management and bcrypt for password hashing"
         assert result.testStrategy == "Unit tests for auth functions, integration tests for auth flow"
         
-        # Verify ID and timestamps are set
         assert result.id is not None
         assert result.created_at is not None
         assert result.updated_at is not None
         
-        # Verify subtasks are properly created
         assert len(result.subtasks) == 1
         subtask = result.subtasks[0]
         assert subtask.title == "Design authentication API endpoints"
         assert subtask.status == TaskStatus.PENDING
         assert subtask.id is not None
         
-        # Verify LLM service was called correctly
-        mock_llm_service.generate_text.assert_called_once()
-        call_args = mock_llm_service.generate_text.call_args
+        mock_llm_provider.generate_text.assert_called_once()
+        call_args = mock_llm_provider.generate_text.call_args
         assert "Create user authentication system" in call_args[0][0]
         assert "Project: Web App" in call_args[0][0]
         assert call_args[1]["model_type"] == "main"
 
-    def test_generate_single_task_handles_json_parsing_error(self, llm_manager, mock_llm_service):
-        """Test that generate_single_task handles JSON parsing errors."""
-        # Mock the LLM service to return invalid JSON
-        mock_llm_service.generate_text = AsyncMock(return_value="This is not valid JSON")
+    async def test_generate_single_task_handles_json_parsing_error(self, llm_generator, mock_llm_provider):
+        mock_llm_provider.generate_text = AsyncMock(side_effect=ValueError("LLM returned invalid JSON"))
         
-        # Call the method and expect ValueError
-        with pytest.raises(ValueError, match="LLM returned invalid JSON"):
-            asyncio.run(llm_manager.generate_single_task(
-                description_prompt="Create user authentication system",
-                model_type="main"
-            ))
-
-    def test_generate_single_task_handles_service_error(self, llm_manager, mock_llm_service):
-        """Test that generate_single_task handles service errors."""
-        # Mock the LLM service to raise an exception
-        mock_llm_service.generate_text = AsyncMock(side_effect=RuntimeError("Service unavailable"))
-        
-        # Call the method and expect RuntimeError
         with pytest.raises(RuntimeError, match="Task generation failed"):
-            asyncio.run(llm_manager.generate_single_task(
+            await llm_generator.generate_single_task(
                 description_prompt="Create user authentication system",
                 model_type="main"
-            ))
+            )
+
+    async def test_generate_single_task_handles_service_error(self, llm_generator, mock_llm_provider):
+        mock_llm_provider.generate_text = AsyncMock(side_effect=RuntimeError("Service unavailable"))
+        
+        with pytest.raises(RuntimeError, match="Task generation failed"):
+            await llm_generator.generate_single_task(
+                description_prompt="Create user authentication system",
+                model_type="main"
+            )

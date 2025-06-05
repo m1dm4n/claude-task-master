@@ -78,7 +78,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 		isSubtask = true;
 
 		if (!targetTask) {
-			log('error', `Subtask ${formattedTaskId} not found.`);
+			log('error', `Task ${formattedTaskId} not found.`);
 			process.exit(1);
 		}
 	} else {
@@ -144,7 +144,7 @@ async function addDependency(tasksPath, taskId, dependencyId) {
 	}
 
 	if (isSelfDependency) {
-		log('error', `Subtask ${formattedTaskId} cannot depend on itself.`);
+		log('error', `Task ${formattedTaskId} cannot depend on itself.`);
 		process.exit(1);
 	}
 
@@ -256,7 +256,7 @@ async function removeDependency(tasksPath, taskId, dependencyId) {
 		isSubtask = true;
 
 		if (!targetTask) {
-			log('error', `Subtask ${formattedTaskId} not found.`);
+			log('error', `Task ${formattedTaskId} not found.`);
 			process.exit(1);
 		}
 	} else {
@@ -459,7 +459,7 @@ function validateTaskDependencies(tasks) {
 						issues.push({
 							type: 'self',
 							taskId: fullSubtaskId,
-							message: `Subtask ${fullSubtaskId} depends on itself`
+							message: `Task ${fullSubtaskId} depends on itself`
 						});
 						return;
 					}
@@ -470,7 +470,7 @@ function validateTaskDependencies(tasks) {
 							type: 'missing',
 							taskId: fullSubtaskId,
 							dependencyId: depId,
-							message: `Subtask ${fullSubtaskId} depends on non-existent task/subtask ${depId}`
+							message: `Task ${fullSubtaskId} depends on non-existent task/subtask ${depId}`
 						});
 					}
 				});
@@ -480,7 +480,7 @@ function validateTaskDependencies(tasks) {
 					issues.push({
 						type: 'circular',
 						taskId: fullSubtaskId,
-						message: `Subtask ${fullSubtaskId} is part of a circular dependency chain`
+						message: `Task ${fullSubtaskId} is part of a circular dependency chain`
 					});
 				}
 			});

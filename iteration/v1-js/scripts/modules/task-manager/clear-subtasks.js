@@ -89,7 +89,7 @@ function clearSubtasks(tasksPath, taskIds) {
 		// Show summary table
 		if (!isSilentMode()) {
 			console.log(
-				boxen(chalk.white.bold('Subtask Clearing Summary:'), {
+				boxen(chalk.white.bold('Task Clearing Summary:'), {
 					padding: { left: 2, right: 2, top: 0, bottom: 0 },
 					margin: { top: 1, bottom: 0 },
 					borderColor: 'blue',

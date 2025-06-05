@@ -157,10 +157,10 @@ if [ ! -f "tasks/tasks.json" ]; then
     exit 1
 fi
 if ! jq -e '.tasks[] | select(.id == 1) | .subtasks[] | select(.id == 1)' tasks/tasks.json > /dev/null 2>&1; then
-    log_error "Subtask 1.1 not found in tasks.json within $(pwd). Cannot perform update-subtask tests."
+    log_error "Task 1.1 not found in tasks.json within $(pwd). Cannot perform update-subtask tests."
     exit 1
 fi
-log_info "Subtask 1.1 found in $(pwd)/tasks/tasks.json, proceeding with verification."
+log_info "Task 1.1 found in $(pwd)/tasks/tasks.json, proceeding with verification."
 
 jq -c 'to_entries[] | .key as $provider | .value[] | select(.allowed_roles[]? == "fallback") | {provider: $provider, id: .id}' "$SUPPORTED_MODELS_FILE" | while IFS= read -r model_info; do
     provider=$(echo "$model_info" | jq -r '.provider')

@@ -44,7 +44,7 @@ async function updateSingleTaskStatus(
 		const subtask = parentTask.subtasks.find((st) => st.id === subtaskId);
 		if (!subtask) {
 			throw new Error(
-				`Subtask ${subtaskId} not found in parent task ${parentId}`
+				`Task ${subtaskId} not found in parent task ${parentId}`
 			);
 		}
 

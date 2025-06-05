@@ -2,7 +2,7 @@ import tempfile
 from pathlib import Path
 from typer.testing import CliRunner
 from src.cli.main import app
-from src.data_models import Task, Subtask, TaskStatus, TaskPriority, ProjectPlan
+from src.data_models import Task, TaskStatus, TaskPriority, ProjectPlan
 from uuid import uuid4
 from src.agent_core.main import DevTaskAIAssistant
 
@@ -12,7 +12,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     
     # Create task with subtasks
     subtasks = [
-        Subtask(id=uuid4(), title='Sub1', description='Desc1', status=TaskStatus.PENDING),
+        Task(id=uuid4(), title='Sub1', description='Desc1', status=TaskStatus.PENDING),
     ]
     task = Task(id=uuid4(), title='Test Task', description='Desc', status=TaskStatus.PENDING, subtasks=subtasks)
     plan = ProjectPlan(id=uuid4(), project_title='Test', overall_goal='Goal', tasks=[task])

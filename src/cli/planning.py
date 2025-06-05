@@ -6,7 +6,6 @@ from typing_extensions import Annotated
 from typing import Optional
 from pathlib import Path
 
-from .utils import get_agent
 
 
 def create_planning_commands(app: typer.Typer):
@@ -30,7 +29,7 @@ def create_planning_commands(app: typer.Typer):
             typer.echo("   (Using research model for enhanced planning)")
 
         try:
-            agent = get_agent(ctx)
+            agent = ctx.obj["agent"]
             project_plan = asyncio.run(agent.plan_project(
                 project_goal=project_goal,
                 project_title=project_title,
@@ -68,7 +67,7 @@ def create_planning_commands(app: typer.Typer):
             typer.echo("   (Using research model for enhanced parsing)")
 
         try:
-            agent = get_agent(ctx)
+            agent = ctx.obj["agent"]
             project_plan = asyncio.run(agent.plan_project_from_prd_file(
                 prd_file_path=str(prd_file),
                 project_title=project_title,

@@ -52,7 +52,7 @@ async function removeSubtask(
 			(st) => st.id === subtaskIdNum
 		);
 		if (subtaskIndex === -1) {
-			throw new Error(`Subtask ${subtaskId} not found`);
+			throw new Error(`Task ${subtaskId} not found`);
 		}
 
 		// Get a copy of the subtask before removing it
@@ -97,7 +97,7 @@ async function removeSubtask(
 
 			log('info', `Created new task ${newTaskId} from subtask ${subtaskId}`);
 		} else {
-			log('info', `Subtask ${subtaskId} deleted`);
+			log('info', `Task ${subtaskId} deleted`);
 		}
 
 		// Write the updated tasks back to the file

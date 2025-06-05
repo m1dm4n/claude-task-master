@@ -1,14 +1,17 @@
 """Main CLI application for the DevTask AI Assistant."""
 
+import os
+from typing import Optional
+from typing_extensions import Annotated
 import typer
-import os # Added import for os
-from typing import Optional # Added import for Optional
-from typing_extensions import Annotated # Added import for Annotated
 
 from .models import create_models_app
 from .project import create_project_commands
 from .planning import create_planning_commands
-from .tasks import create_task_commands
+from .task_query import create_task_query_commands
+from .task_modification import create_task_modification_commands
+from .task_generation import create_task_generation_commands
+from ..agent_core.assistant import DevTaskAIAssistant
 
 app = typer.Typer(
     name="task-master",
@@ -22,30 +25,20 @@ def main_callback(
     workspace: Annotated[Optional[str], typer.Option(
         "--workspace", "-w",
         help="Path to the project workspace directory. Defaults to current directory.",
-        envvar="TASKMASTER_WORKSPACE", # Optional: allow setting via env var
-        show_default=False # Show CWD as default only if not explicitly set
+        envvar="TASKMASTER_WORKSPACE",
+        show_default=False
     )] = None,
 ):
     """
     DevTask AI Assistant CLI.
     """
     if ctx.invoked_subcommand is None:
-        # If no subcommand is called, and it's just 'task-master --workspace ...'
-        # we might want to print help or a status, or just allow it.
-        # For now, just ensure obj is ready for subcommands.
         pass
 
-    ctx.ensure_object(dict)
-    if workspace:
-        ctx.obj["workspace_path"] = os.path.abspath(workspace)
-    else:
-        # If --workspace is not provided, then get_agent will use os.getcwd()
-        # We can explicitly set it here too for consistency, or let get_agent handle it.
-        # Let's set it here to be explicit and ensure it's absolute.
-        ctx.obj["workspace_path"] = os.getcwd()
-    
-    # For testing purposes, we might want to echo the workspace path
-    # typer.echo(f"CLI using workspace: {ctx.obj['workspace_path']}")
+    # Ensure os is imported for os.path.abspath and os.getcwd()
+    # This will be removed in a subsequent step after the path is correctly handled by ProjectIO
+    ctx.obj["workspace_path"] = os.path.abspath(workspace) if workspace else os.getcwd()
+    ctx.obj["agent"] = DevTaskAIAssistant(ctx.obj["workspace_path"])
 
 
 # Create and add subcommand group for model management
@@ -55,7 +48,9 @@ app.add_typer(models_app, name="models")
 # Add commands from other modules
 create_project_commands(app)
 create_planning_commands(app)
-create_task_commands(app)
+create_task_query_commands(app)
+create_task_modification_commands(app)
+create_task_generation_commands(app)
 
 if __name__ == "__main__":
     app()

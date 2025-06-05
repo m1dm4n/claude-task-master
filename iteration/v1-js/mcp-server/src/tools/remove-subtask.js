@@ -24,7 +24,7 @@ export function registerRemoveSubtaskTool(server) {
 			id: z
 				.string()
 				.describe(
-					"Subtask ID to remove in format 'parentId.subtaskId' (required)"
+					"Task ID to remove in format 'parentId.subtaskId' (required)"
 				),
 			convert: z
 				.boolean()
@@ -75,7 +75,7 @@ export function registerRemoveSubtaskTool(server) {
 				);
 
 				if (result.success) {
-					log.info(`Subtask removed successfully: ${result.data.message}`);
+					log.info(`Task removed successfully: ${result.data.message}`);
 				} else {
 					log.error(`Failed to remove subtask: ${result.error.message}`);
 				}

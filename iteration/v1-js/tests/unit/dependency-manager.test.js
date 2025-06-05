@@ -382,10 +382,10 @@ describe('Dependency Manager Module', () => {
 			// Mock taskExists to correctly identify missing subtasks
 			mockTaskExists.mockImplementation((taskArray, depId) => {
 				if (typeof depId === 'string' && depId === '1.4') {
-					return false; // Subtask 1.4 doesn't exist
+					return false; // Task 1.4 doesn't exist
 				}
 				if (typeof depId === 'string' && depId === '2.1') {
-					return false; // Subtask 2.1 doesn't exist
+					return false; // Task 2.1 doesn't exist
 				}
 				return true; // All other dependencies exist
 			});

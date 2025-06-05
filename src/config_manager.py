@@ -20,6 +20,7 @@ class ConfigManager:
             workspace_path: Path to the workspace directory
             config_filename: Name of the config file (default: .taskmasterconfig)
         """
+        # Removed debug print
         self.workspace_path = Path(workspace_path).resolve()
         self.config_filename = config_filename
         self.config_file_path = self.workspace_path / config_filename

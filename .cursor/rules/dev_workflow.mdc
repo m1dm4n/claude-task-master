@@ -174,7 +174,7 @@ Taskmaster configuration is managed through two main mechanisms:
 - This provides greater flexibility in organizing and refining your task structure as project understanding evolves
 - This is especially useful when dealing with potential merge conflicts arising from teams creating tasks on separate branches. Solve these conflicts very easily by moving your tasks and keeping theirs.
 
-## Iterative Subtask Implementation
+## Iterative Task Implementation
 
 Once a task has been broken down into subtasks using `expand_task` or similar methods, follow this iterative process for implementation:
 
@@ -224,7 +224,7 @@ Once a task has been broken down into subtasks using `expand_task` or similar me
     *   Execute the commit command directly in the terminal (e.g., `git commit -m 'feat(module): Implement feature X for subtask <subtaskId>\n\n- Details about changes...\n- Updated rule Y for pattern Z'`).
     *   Consider if a Changeset is needed according to internal versioning guidelines (previously linked to `changeset.mdc`). If so, run `npm run changeset`, stage the generated file, and amend the commit or create a new one.
 
-10. **Proceed to Next Subtask:**
+10. **Proceed to Next Task:**
     *   Identify the next subtask (e.g., using `next_task` / `task-master next`).
 
 ## Code Analysis & Refactoring Techniques

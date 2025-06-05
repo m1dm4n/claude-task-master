@@ -155,7 +155,7 @@ Notes:
 - When marking a parent task as "done", all of its subtasks will automatically be marked as "done" as well
 - Common status values are 'done', 'pending', and 'deferred', but any string is accepted
 - You can specify multiple task IDs by separating them with commas
-- Subtask IDs are specified using the format `parentId.subtaskId` (e.g., `3.1`)
+- Task IDs are specified using the format `parentId.subtaskId` (e.g., `3.1`)
 - Dependencies are updated to show completion status (✅ for completed, ⏱️ for pending) throughout the system
 
 ## Expanding Tasks
@@ -517,7 +517,7 @@ The script now automatically checks for updates without slowing down execution:
    - Fetches version information from npm registry with a timeout
    - Gracefully handles connection issues without affecting command execution
 
-## Subtask Management
+## Task Management
 
 The script now includes enhanced commands for managing subtasks:
 

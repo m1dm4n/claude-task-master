@@ -12,7 +12,7 @@ import {
  * Remove a subtask from its parent task
  * @param {Object} args - Function arguments
  * @param {string} args.tasksJsonPath - Explicit path to the tasks.json file.
- * @param {string} args.id - Subtask ID in format "parentId.subtaskId" (required)
+ * @param {string} args.id - Task ID in format "parentId.subtaskId" (required)
  * @param {boolean} [args.convert] - Whether to convert the subtask to a standalone task
  * @param {boolean} [args.skipGenerate] - Skip regenerating task files
  * @param {Object} log - Logger object
@@ -47,7 +47,7 @@ export async function removeSubtaskDirect(args, log) {
 				error: {
 					code: 'INPUT_VALIDATION_ERROR',
 					message:
-						'Subtask ID is required and must be in format "parentId.subtaskId"'
+						'Task ID is required and must be in format "parentId.subtaskId"'
 				}
 			};
 		}
@@ -93,7 +93,7 @@ export async function removeSubtaskDirect(args, log) {
 			return {
 				success: true,
 				data: {
-					message: `Subtask ${id} successfully converted to task #${result.id}`,
+					message: `Task ${id} successfully converted to task #${result.id}`,
 					task: result
 				}
 			};
@@ -102,7 +102,7 @@ export async function removeSubtaskDirect(args, log) {
 			return {
 				success: true,
 				data: {
-					message: `Subtask ${id} successfully removed`
+					message: `Task ${id} successfully removed`
 				}
 			};
 		}

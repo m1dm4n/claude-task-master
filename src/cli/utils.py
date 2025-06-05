@@ -1,25 +1,13 @@
 """Shared CLI utilities for the DevTask AI Assistant."""
 
 import typer
-import os
-from ..agent_core.main import DevTaskAIAssistant
+from uuid import UUID
 
 
-def get_agent(ctx: typer.Context) -> DevTaskAIAssistant:
-    """
-    Get or create DevTaskAIAssistant instance for the current workspace.
-    
-    Args:
-        ctx: Typer context
-        
-    Returns:
-        DevTaskAIAssistant instance
-    """
-    if not hasattr(ctx, 'obj') or ctx.obj is None or 'agent' not in ctx.obj:
-        # workspace_path should be set by the main_callback in main.py
-        # Default to os.getcwd() only if it's somehow not in ctx.obj
-        workspace_path = ctx.obj.get("workspace_path", os.getcwd()) if ctx.obj else os.getcwd()
-        
-        ctx.ensure_object(dict) # Ensure ctx.obj is a dict
-        ctx.obj['agent'] = DevTaskAIAssistant(workspace_path)
-    return ctx.obj['agent']
+def parse_uuid_or_exit(uuid_str: str, item_name: str = "ID") -> UUID:
+    """Parses a string to UUID. Exits with an error message if parsing fails."""
+    try:
+        return UUID(uuid_str)
+    except ValueError:
+        typer.secho(f"❌ Invalid {item_name} format: '{uuid_str}'. Please provide a valid UUID.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)

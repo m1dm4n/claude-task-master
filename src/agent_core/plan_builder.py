@@ -1,38 +1,40 @@
-"""Project planning and PRD parsing for the DevTask AI Assistant."""
-
 from pathlib import Path
 from typing import Optional, Union
+from uuid import uuid4
+from datetime import datetime, timezone
 
 import logfire
 
-from ..data_models import ProjectPlan
-from .llm_services import AgentDependencies
+from ..data_models import ProjectPlan, Task, TaskStatus, TaskPriority
+from .llm_generator import LLMGenerator
+from .project_io import ProjectIO
 
 
-class PlanningManager:
-    """Manages project planning and PRD parsing functionality."""
+class PlanBuilder:
+    """
+    Handles high-level project planning, using LLMGenerator.
+    """
     
-    def __init__(self, llm_manager, project_manager):
+    def __init__(self, llm_generator: LLMGenerator, project_io: ProjectIO):
         """
-        Initialize PlanningManager.
+        Initialize PlanBuilder.
         
         Args:
-            llm_manager: LLMManager instance
-            project_manager: ProjectManager instance
+            llm_generator: LLMGenerator instance
+            project_io: ProjectIO instance
         """
-        self.llm_manager = llm_manager
-        self.project_manager = project_manager
+        self.llm_generator = llm_generator
+        self.project_io = project_io
     
-    async def plan_project(self, project_goal: str, project_title: Optional[str] = "New Project", num_tasks: Optional[int] = None, use_research: bool = False, deps: Optional[AgentDependencies] = None) -> ProjectPlan:
+    async def plan_project(self, project_goal: str, project_title: Optional[str] = "New Project", num_tasks: Optional[int] = None, use_research: bool = False) -> ProjectPlan:
         """
-        Generate a project plan from a simple project goal using the LLMService.
+        Generate a project plan from a simple project goal using the LLMGenerator.
         
         Args:
             project_goal: Description of the overall project goal.
             project_title: Optional title for the project.
             num_tasks: Optional. Desired number of main tasks.
             use_research: Whether to use the research model for planning.
-            deps: Optional agent dependencies (not directly used by LLMService, but kept for consistency).
             
         Returns:
             Generated ProjectPlan.
@@ -40,41 +42,52 @@ class PlanningManager:
         logfire.info(f"Planning project from goal: {project_goal}")
         
         try:
-            project_plan = await self.llm_manager.generate_plan_from_text(
-                text_content=None, # No PRD content, just the goal
+            project_plan = await self.llm_generator.generate_plan_from_text(
+                text_content=None,
                 project_goal=project_goal,
                 num_tasks=num_tasks,
                 model_type="research" if use_research else "main"
             )
             
-            # Ensure project title and overall goal are set from input if not by LLM
-            # If a custom project_title is provided (and not the default placeholder), use it.
-            # Otherwise, use what the LLM provided, or fall back to the original project_title if LLM provided nothing.
             if project_title and project_title != "New Project":
                 project_plan.project_title = project_title
-            elif not project_plan.project_title: # If LLM gave no title, use input (which might be "New Project")
+            elif not project_plan.project_title:
                 project_plan.project_title = project_title
-            # If LLM gave a title, and input was "New Project", we keep LLM's title.
             if not project_plan.overall_goal:
                 project_plan.overall_goal = project_goal
 
-            self.project_manager.set_project_plan(project_plan)
+            if not project_plan.tasks:
+                logfire.warn(f"LLM generated an empty task list for goal: '{project_goal}'. Attempting to create a default task.")
+                default_task = Task(
+                    id=uuid4(),
+                    title=project_plan.project_title if project_plan.project_title != "New Project" else project_goal,
+                    description=project_goal,
+                    status=TaskStatus.PENDING,
+                    priority=TaskPriority.MEDIUM,
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                    subtasks=[],
+                    dependencies=[]
+                )
+                project_plan.tasks.append(default_task)
+                logfire.info(f"Added a default task based on the project goal: '{default_task.title}'")
+
+            self.project_io.set_project_plan(project_plan)
             logfire.info(f"Successfully generated and saved project plan: {project_plan.project_title}")
             return project_plan
         except Exception as e:
             logfire.error(f"Error generating project plan from goal: {e}")
             raise
-
-    async def plan_project_from_prd_file(self, prd_file_path: Union[str, Path], project_title: Optional[str] = "New Project", num_tasks: Optional[int] = None, use_research: bool = False, deps: Optional[AgentDependencies] = None) -> ProjectPlan:
+        
+    async def plan_project_from_prd_file(self, prd_file_path: Union[str, Path], project_title: Optional[str] = "New Project", num_tasks: Optional[int] = None, use_research: bool = False) -> ProjectPlan:
         """
-        Generates a project plan by parsing a PRD file using the LLMService.
+        Generates a project plan by parsing a PRD file using the LLMGenerator.
 
         Args:
             prd_file_path: Path to the PRD file.
             project_title: Optional title for the project. If not provided, derived from PRD or default.
             num_tasks: Optional. Desired number of main tasks.
             use_research: Whether to use the research model for planning.
-            deps: Optional agent dependencies (not directly used by LLMService, but kept for consistency).
 
         Returns:
             Generated ProjectPlan.
@@ -89,30 +102,24 @@ class PlanningManager:
             with open(prd_file_path, 'r', encoding='utf-8') as f:
                 prd_content = f.read()
 
-            # Attempt to derive a project goal/title from the PRD content or filename
-            # For simplicity, we can initially use the filename as a goal, or let LLM derive it.
-            # In a real scenario, you might have a more sophisticated prompt to extract title/goal
-            # or even use a dedicated LLM call just for that.
             derived_project_goal = project_title if project_title != "New Project" else prd_file_path.stem.replace('_', ' ').title()
             
-            project_plan = await self.llm_manager.generate_plan_from_text(
+            project_plan = await self.llm_generator.generate_plan_from_text(
                 text_content=prd_content,
                 project_goal=derived_project_goal,
                 num_tasks=num_tasks,
                 model_type="research" if use_research else "main"
             )
 
-            # Update project title from input if provided, otherwise use LLM's title or derived
             if project_title and project_title != "New Project":
                 project_plan.project_title = project_title
             elif not project_plan.project_title or project_plan.project_title == "New Project":
-                project_plan.project_title = derived_project_goal # Fallback to derived from filename
+                project_plan.project_title = derived_project_goal
 
-            # Ensure overall goal is set if not by LLM
             if not project_plan.overall_goal:
                 project_plan.overall_goal = derived_project_goal
 
-            self.project_manager.set_project_plan(project_plan)
+            self.project_io.set_project_plan(project_plan)
             logfire.info(f"Successfully generated and saved project plan from PRD: {project_plan.project_title}")
             return project_plan
         except Exception as e:
