@@ -5,21 +5,17 @@ for project management, task handling, and AI-powered development assistance.
 """
 
 from .assistant import DevTaskAIAssistant
-from .llm_config import LLMConfigManager
-from .llm_provider import LLMProvider
-from .llm_generator import LLMGenerator
-from .plan_builder import PlanBuilder
-from .project_io import ProjectIO
-from .task_operations import TaskOperations
-from .dependency_logic import DependencyManager
+from .services.config_service import ConfigService
+from .services.llm_service import LLMService
+from .services.project_service import ProjectService
+from .services.task_service import TaskService
+from .mcp_handler import MCPHandler
 
 __all__ = [
     "DevTaskAIAssistant",
-    "LLMConfigManager",
-    "LLMProvider",
-    "LLMGenerator",
-    "PlanBuilder",
-    "ProjectIO",
-    "TaskOperations",
-    "DependencyManager",
+    "ConfigService",
+    "LLMService",
+    "ProjectService",
+    "TaskService",
+    "MCPHandler",
 ]

@@ -1,10 +1,9 @@
 """Task query commands for the DevTask AI Assistant CLI."""
-
 import typer
 from typing_extensions import Annotated
 from typing import Optional
 from uuid import UUID
-import asyncio
+from ..utils.async_utils import run_async_tasks_sync
 
 from ..data_models import TaskStatus
 from .utils import parse_uuid_or_exit
@@ -14,7 +13,7 @@ def create_task_query_commands(app: typer.Typer):
     """Add task query-related commands to the main app."""
 
     @app.command("list")
-    def list_tasks(
+    def list_tasks( # Reverted to synchronous def
         ctx: typer.Context,
         status: Annotated[Optional[TaskStatus], typer.Option(
             help="Filter tasks by status.", case_sensitive=False)] = None,
@@ -28,67 +27,110 @@ def create_task_query_commands(app: typer.Typer):
             agent = ctx.obj["agent"]
 
             if status:
-                tasks = agent.get_tasks_by_status(status)
-                typer.echo(
-                    f"📋 Tasks with status '{status.value}' for '{agent.get_current_project_plan().project_title if agent.get_current_project_plan() else 'No Project'}':")
-            else:
-                tasks = agent.get_all_tasks()
-                typer.echo(
-                    f"📋 All Tasks for '{agent.get_current_project_plan().project_title if agent.get_current_project_plan() else 'No Project'}':")
+                agent = ctx.obj["agent"]
+    
+                tasks = run_async_tasks_sync(agent.get_tasks_by_status(status))
+                project_plan = run_async_tasks_sync(agent.get_current_project_plan())
+                project_title = project_plan.project_title if project_plan else 'No Project'
+                typer.echo(f"📋 Tasks with status '{status.value}' for '{project_title}':")
+                typer.echo("=" * 50)
+                for task in tasks:
+                    status_emoji = {
+                        TaskStatus.PENDING: "⏳",
+                        TaskStatus.IN_PROGRESS: "🔄",
+                        TaskStatus.COMPLETED: "✅",
+                        TaskStatus.BLOCKED: "🚫",
+                        TaskStatus.CANCELLED: "❌",
+                        TaskStatus.DEFERRED: "⏰"
+                    }.get(task.status, "📝")
 
-            if not tasks:
-                typer.echo("📝 No tasks found matching the criteria.")
-                typer.echo(
-                    "💡 Use 'task-master parse-prd' or 'task-master plan' to get started.")
-                return
+                    typer.secho(f"\n{status_emoji} {task.title}",
+                                fg=typer.colors.CYAN, bold=True)
+                    typer.echo(f"   ID: {task.id}")
+                    typer.echo(f"   Status: {task.status.value}")
+                    if task.priority:
+                        typer.echo(f"   Priority: {task.priority.value}")
+                    typer.echo(f"   Description: {task.description}")
 
-            typer.echo("=" * 50)
-
-            for task in tasks:
-                status_emoji = {
-                    TaskStatus.PENDING: "⏳",
-                    TaskStatus.IN_PROGRESS: "🔄",
-                    TaskStatus.COMPLETED: "✅",
-                    TaskStatus.BLOCKED: "🚫",
-                    TaskStatus.CANCELLED: "❌",
-                    TaskStatus.DEFERRED: "⏰"
-                }.get(task.status, "📝")
-
-                typer.secho(f"\n{status_emoji} {task.title}",
-                            fg=typer.colors.CYAN, bold=True)
-                typer.echo(f"   ID: {task.id}")
-                typer.echo(f"   Status: {task.status.value}")
-                if task.priority:
-                    typer.echo(f"   Priority: {task.priority.value}")
-                typer.echo(f"   Description: {task.description}")
-
-                if with_subtasks and task.subtasks:
-                    typer.echo("   Subtasks:")
-                    for subtask in task.subtasks:
-                        sub_status_emoji = {
-                            TaskStatus.PENDING: "⏳",
-                            TaskStatus.IN_PROGRESS: "🔄",
-                            TaskStatus.COMPLETED: "✅",
-                            TaskStatus.BLOCKED: "🚫",
-                            TaskStatus.CANCELLED: "❌",
-                            TaskStatus.DEFERRED: "⏰"
-                        }.get(subtask.status, "📝")
-                        typer.secho(
-                            f"     {sub_status_emoji} {subtask.title}", fg=typer.colors.BLUE)
-                        typer.echo(f"       ID: {subtask.id}")
-                        typer.echo(f"       Status: {subtask.status.value}")
-                        if subtask.priority:
+                    if with_subtasks and task.subtasks:
+                        typer.echo("   Subtasks:")
+                        for subtask in task.subtasks:
+                            sub_status_emoji = {
+                                TaskStatus.PENDING: "⏳",
+                                TaskStatus.IN_PROGRESS: "🔄",
+                                TaskStatus.COMPLETED: "✅",
+                                TaskStatus.BLOCKED: "🚫",
+                                TaskStatus.CANCELLED: "❌",
+                                TaskStatus.DEFERRED: "⏰"
+                            }.get(subtask.status, "📝")
+                            typer.secho(
+                                f"     {sub_status_emoji} {subtask.title}", fg=typer.colors.BLUE)
+                            typer.echo(f"       ID: {subtask.id}")
+                            typer.echo(f"       Status: {subtask.status.value}")
+                            if subtask.priority:
+                                typer.echo(
+                                    f"       Priority: {subtask.priority.value}")
                             typer.echo(
-                                f"       Priority: {subtask.priority.value}")
-                        typer.echo(
-                            f"       Description: {subtask.description}")
+                                f"       Description: {subtask.description}")
+            else:
+                tasks = run_async_tasks_sync(agent.get_all_tasks())
+                if tasks is None:
+                    tasks = []
+                project_plan = run_async_tasks_sync(agent.get_current_project_plan())
+                project_title = project_plan.project_title if project_plan else 'No Project'
+                typer.echo(
+                    f"📋 All Tasks for '{project_title}':")
+                if not tasks:
+                    typer.echo(
+                        "💡 Use 'task-master parse-prd' or 'task-master plan' to get started.")
+                    typer.echo("=" * 50)
+                    return
+                typer.echo("=" * 50)
+                for task in tasks:
+                    status_emoji = {
+                        TaskStatus.PENDING: "⏳",
+                        TaskStatus.IN_PROGRESS: "🔄",
+                        TaskStatus.COMPLETED: "✅",
+                        TaskStatus.BLOCKED: "🚫",
+                        TaskStatus.CANCELLED: "❌",
+                        TaskStatus.DEFERRED: "⏰"
+                    }.get(task.status, "📝")
+
+                    typer.secho(f"\n{status_emoji} {task.title}",
+                                fg=typer.colors.CYAN, bold=True)
+                    typer.echo(f"   ID: {task.id}")
+                    typer.echo(f"   Status: {task.status.value}")
+                    if task.priority:
+                        typer.echo(f"   Priority: {task.priority.value}")
+                    typer.echo(f"   Description: {task.description}")
+
+                    if with_subtasks and task.subtasks:
+                        typer.echo("   Subtasks:")
+                        for subtask in task.subtasks:
+                            sub_status_emoji = {
+                                TaskStatus.PENDING: "⏳",
+                                TaskStatus.IN_PROGRESS: "🔄",
+                                TaskStatus.COMPLETED: "✅",
+                                TaskStatus.BLOCKED: "🚫",
+                                TaskStatus.CANCELLED: "❌",
+                                TaskStatus.DEFERRED: "⏰"
+                            }.get(subtask.status, "📝")
+                            typer.secho(
+                                f"     {sub_status_emoji} {subtask.title}", fg=typer.colors.BLUE)
+                            typer.echo(f"       ID: {subtask.id}")
+                            typer.echo(f"       Status: {subtask.status.value}")
+                            if subtask.priority:
+                                typer.echo(
+                                    f"       Priority: {subtask.priority.value}")
+                            typer.echo(
+                                f"       Description: {subtask.description}")
 
         except Exception as e:
             typer.secho(f"❌ Error listing tasks: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)
 
     @app.command("next-task")
-    def next_task_command(
+    def next_task_command( # Reverted to synchronous def
         ctx: typer.Context
     ):
         """
@@ -96,75 +138,92 @@ def create_task_query_commands(app: typer.Typer):
         """
         try:
             agent = ctx.obj["agent"]
-            next_task = agent.get_next_task()
+            next_task = run_async_tasks_sync(agent.get_next_actionable_task())
 
             if next_task:
-                typer.secho("🎯 Next actionable task:", fg=typer.colors.GREEN, bold=True)
-                typer.secho(f"Title: {next_task.title}", fg=typer.colors.CYAN, bold=True)
-                typer.echo(f"ID: {next_task.id}")
-                typer.echo(f"Description: {next_task.description}")
-                typer.echo(f"Status: {next_task.status.value}")
+                typer.secho("\n🚀 Next Actionable Task:",
+                            fg=typer.colors.GREEN, bold=True)
+                typer.echo("=" * 50)
+                typer.secho(f"✨ {next_task.title}",
+                            fg=typer.colors.CYAN, bold=True)
+                typer.echo(f"   ID: {next_task.id}")
+                typer.echo(f"   Status: {next_task.status.value}")
                 if next_task.priority:
-                    typer.echo(f"Priority: {next_task.priority.value}")
+                    typer.echo(f"   Priority: {next_task.priority.value}")
+                typer.echo(f"   Description: {next_task.description}")
                 if next_task.dependencies:
-                    typer.echo(f"Dependencies: {', '.join(str(d) for d in next_task.dependencies)}")
+                    typer.echo(
+                        f"   Dependencies: {', '.join([str(d) for d in next_task.dependencies])}")
+                if next_task.subtasks:
+                    typer.echo(
+                        f"   Subtasks: {len(next_task.subtasks)} present")
+                typer.echo("=" * 50)
+                typer.echo(
+                    "\n💡 Use 'task-master set-status --id <ID> --status COMPLETED' when done.")
             else:
-                typer.secho("🤷 No actionable PENDING tasks found. All tasks may be COMPLETED, BLOCKED, or DEFERRED, or no tasks exist.", fg=typer.colors.YELLOW)
-                typer.echo("💡 Use 'task-master list --status PENDING' to see all pending tasks.")
+                typer.secho(
+                    "\n🎉 No actionable tasks found. All tasks might be completed, blocked, or deferred.", fg=typer.colors.GREEN)
+                typer.echo(
+                    "💡 Use 'task-master list --status BLOCKED' to check for blocked tasks or 'task-master validate-dependencies' to check for dependency issues.")
+                typer.echo(
+                    "💡 Or, use 'task-master plan' or 'task-master parse-prd' to create new tasks.")
+                raise typer.Exit(code=2) # Exit with code 2 to indicate no actionable tasks found, not an error
 
         except Exception as e:
             typer.secho(f"❌ Error getting next task: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)
 
     @app.command("show")
-    def show_item(
+    def show_item( # Reverted to synchronous def
         ctx: typer.Context,
-        item_id_str: Annotated[str, typer.Argument(
-            help="The ID (UUID) of the task or subtask to show.")]
+        item_id_str: Annotated[str, typer.Argument(help="ID of the task or subtask to show.")]
     ):
         """
-        Show detailed information for a specific task or subtask by its ID.
+        Display detailed information about a specific task or subtask.
         """
         try:
             agent = ctx.obj["agent"]
-
             item_uuid = parse_uuid_or_exit(item_id_str, "item ID")
 
-            item = agent.get_item_by_id(item_uuid)
+            typer.echo(f"🔍 Fetching details for item ID: {item_id_str}...")
+
+            item = run_async_tasks_sync(agent.get_item_by_id(item_uuid))
+
             if item:
-                typer.echo(f"🔍 Details for Item (ID: {item.id})")
+                typer.secho(f"\n🔍 Details for Item (ID: {item.id})",
+                            fg=typer.colors.GREEN, bold=True)
                 typer.echo("=" * 50)
-
-                typer.secho(f"Title: {item.title}",
+                typer.secho(f"✨ Title: {item.title}",
                             fg=typer.colors.CYAN, bold=True)
-                typer.echo(f"ID: {item.id}")
-                typer.echo(f"Description: {item.description}")
-                typer.echo(f"Status: {item.status.value}")
-
+                typer.echo(f"   Description: {item.description}")
+                typer.echo(f"   Status: {item.status.value}")
                 if item.priority:
-                    typer.echo(f"Priority: {item.priority.value}")
+                    typer.echo(f"   Priority: {item.priority.value}")
                 if item.dependencies:
                     typer.echo(
-                        f"Dependencies: {', '.join(str(d) for d in item.dependencies)}")
-                if hasattr(item, 'due_date') and item.due_date:
-                    typer.echo(
-                        f"Due Date: {item.due_date.strftime('%Y-%m-%d')}")
-                if hasattr(item, 'details') and item.details:
-                    typer.echo(f"Details:\n{item.details}")
-                if hasattr(item, 'testStrategy') and item.testStrategy:
-                    typer.echo(f"Test Strategy:\n{item.testStrategy}")
-
+                        f"   Dependencies: {', '.join([str(d) for d in item.dependencies])}")
                 if item.subtasks:
-                    typer.echo("\nSubtasks:")
+                    typer.echo("   Subtasks:")
                     for subtask in item.subtasks:
-                        typer.secho(
-                            f"  - {subtask.title} (ID: {subtask.id}, Status: {subtask.status.value})", fg=typer.colors.BLUE)
+                        typer.echo(f"     - {subtask.title} (ID: {subtask.id})")
+                if item.parent_id:
+                    typer.echo(f"   Parent ID: {item.parent_id}")
+                if item.implementation_notes:
+                    typer.echo(f"   Implementation Notes:\n{item.implementation_notes}")
+                if item.test_strategy:
+                    typer.echo(f"   Test Strategy:\n{item.test_strategy}")
+                typer.echo(f"   Created At: {item.created_at}")
+                if item.due_date:
+                    typer.echo(f"   Due Date: {item.due_date}")
+                typer.echo("=" * 50)
             else:
                 typer.secho(
                     f"❌ Item with ID '{item_id_str}' not found.", fg=typer.colors.RED)
                 raise typer.Exit(code=1)
 
+        except ValueError as ve:
+            typer.secho(f"❌ Error: {ve}", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
         except Exception as e:
-            typer.secho(
-                f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
+            typer.secho(f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)

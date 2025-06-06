@@ -1,11 +1,12 @@
 """Task modification commands for the DevTask AI Assistant CLI."""
 
 import typer
+import typer
 from typing_extensions import Annotated
 from typing import Optional, List
 from uuid import UUID
-import asyncio
 
+from ..utils.async_utils import run_async_tasks_sync
 from ..data_models import TaskStatus
 from .utils import parse_uuid_or_exit
 
@@ -14,7 +15,7 @@ def create_task_modification_commands(app: typer.Typer):
     """Add task modification-related commands to the main app."""
 
     @app.command("set-status")
-    def set_status_command(
+    def set_status_command( # Reverted to synchronous def
         ctx: typer.Context,
         item_ids_str: Annotated[str, typer.Option("--id", "-i", help="Comma-separated list of item IDs (UUIDs) to update.")],
         new_status_str: Annotated[str, typer.Option(
@@ -58,7 +59,7 @@ def create_task_modification_commands(app: typer.Typer):
             f"🔄 Attempting to update status for {len(item_uuids)} items to '{status_enum.value}'...")
 
         try:
-            results = agent.update_item_status(item_uuids, status_enum)
+            results = run_async_tasks_sync(agent.update_item_status(item_uuids, status_enum))
 
             for item_id, success in results.items():
                 if success:
@@ -96,7 +97,7 @@ def create_task_modification_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("update-task")
-    def update_task_command(
+    def update_task_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[str, typer.Argument(help="ID of the task to update.")],
         refinement_instruction: Annotated[str, typer.Argument(help="Instructions for how to refine the task.")],
@@ -113,37 +114,85 @@ def create_task_modification_commands(app: typer.Typer):
             agent = ctx.obj["agent"]
 
             task_uuid = parse_uuid_or_exit(task_id_str, "task ID")
+ 
+            try:
+                item = run_async_tasks_sync(agent.task_service.get_task_by_id(task_uuid))
+                if item is None or item.parent:
+                    typer.secho(
+                        f"❌ Task with ID '{task_id_str}' not found or is a subtask.", fg=typer.colors.RED)
+                    raise typer.Exit(code=1)
 
-            item = agent.get_item_by_id(task_uuid)
-            if item is None:
+                typer.echo(
+                    f"🔄 Updating task '{item.title}' using {'research' if use_research else 'main'} model...")
+
+                updated_item = run_async_tasks_sync(agent.refine_task_or_subtask(
+                    task_uuid, refinement_instruction, use_research=use_research
+                ))
+
+                if updated_item:
+                    typer.secho(
+                        f"✅ Successfully updated task '{updated_item.title}'", fg=typer.colors.GREEN)
+                    typer.echo(f"Successfully updated task '{updated_item.title}'")
+                else:
+                    typer.secho(
+                        f"❌ Failed to update task. Please check the logs for details.", fg=typer.colors.RED)
+                    raise typer.Exit(code=1)
+
+            except Exception as e:
                 typer.secho(
-                    f"❌ Task with ID '{task_id_str}' not found.", fg=typer.colors.RED)
+                    f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+        except:
+            pass
+
+    @app.command("update-subtask")
+    def update_subtask_command( # Reverted to synchronous def
+        ctx: typer.Context,
+        task_id_str: Annotated[str, typer.Argument(help="ID of the subtask to update.")],
+        refinement_instruction: Annotated[str, typer.Argument(help="Instructions for how to refine the subtask.")],
+        use_research: Annotated[bool, typer.Option(
+            "--research", help="Use the research model for refinement.")] = False
+    ):
+        """
+        Update a subtask using AI-powered refinement.
+
+        The refinement instruction can include requests to modify the title, description, 
+        status, priority, details, test strategy, or other task properties.
+        """
+        try:
+            agent = ctx.obj["agent"]
+
+            task_uuid = parse_uuid_or_exit(task_id_str, "task ID")
+ 
+            item = run_async_tasks_sync(agent.task_service.get_task_by_id(task_uuid))
+            if item is None or item.parent:
+                typer.secho(
+                    f"❌ Subtask with ID '{task_id_str}' not found or is a main task. Use `update-task` to update main tasks.", fg=typer.colors.RED)
                 raise typer.Exit(code=1)
 
             typer.echo(
-                f"🔄 Updating task '{item.title}' using {'research' if use_research else 'main'} model...")
+                f"🔄 Updating subtask '{item.title}' using {'research' if use_research else 'main'} model...")
 
-            updated_item = asyncio.run(agent.refine_task_or_subtask(
+            updated_item = run_async_tasks_sync(agent.refine_task_or_subtask(
                 task_uuid, refinement_instruction, use_research=use_research
             ))
 
             if updated_item:
                 typer.secho(
-                    f"✅ Successfully updated task '{updated_item.title}'", fg=typer.colors.GREEN)
-                typer.echo(f"Successfully updated task '{updated_item.title}'")
+                    f"✅ Successfully updated subtask '{updated_item.title}'", fg=typer.colors.GREEN)
+                typer.echo(f"Successfully updated subtask '{updated_item.title}'")
             else:
                 typer.secho(
-                    f"❌ Failed to update task. Please check the logs for details.", fg=typer.colors.RED)
+                    f"❌ Failed to update subtask. Please check the logs for details.", fg=typer.colors.RED)
                 raise typer.Exit(code=1)
 
         except Exception as e:
             typer.secho(
                 f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)
-        return
 
     @app.command("move-task")
-    def move_task_command(
+    def move_task_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[str, typer.Argument(help="ID of the task to move.")],
         new_parent_id_str: Annotated[Optional[str], typer.Option(
@@ -163,7 +212,7 @@ def create_task_modification_commands(app: typer.Typer):
 
             typer.echo(f"🔄 Moving task {task_id_str}...")
 
-            success = agent.move_task(task_uuid, new_parent_uuid)
+            success = run_async_tasks_sync(agent.move_task(task_uuid, new_parent_uuid))
 
             if success:
                 if new_parent_uuid:
@@ -183,7 +232,7 @@ def create_task_modification_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("add-dependency")
-    def add_dependency_command(
+    def add_dependency_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[str, typer.Argument(help="ID of the task to add dependencies to.")],
         dependency_ids_str: Annotated[List[str], typer.Argument(
@@ -203,7 +252,7 @@ def create_task_modification_commands(app: typer.Typer):
 
             typer.echo(f"🔄 Adding dependencies to task {task_id_str}...")
 
-            success = agent.add_dependency(task_uuid, dependency_uuids)
+            success = run_async_tasks_sync(agent.add_dependency(task_uuid, dependency_uuids))
 
             if success:
                 typer.secho(
@@ -219,7 +268,7 @@ def create_task_modification_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("remove-dependency")
-    def remove_dependency_command(
+    def remove_dependency_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[str, typer.Argument(help="ID of the task to remove dependencies from.")],
         dependency_ids_str: Annotated[List[str], typer.Argument(
@@ -239,7 +288,7 @@ def create_task_modification_commands(app: typer.Typer):
 
             typer.echo(f"🔄 Removing dependencies from task {task_id_str}...")
 
-            success = agent.remove_dependency(task_uuid, dependency_uuids)
+            success = run_async_tasks_sync(agent.remove_dependency(task_uuid, dependency_uuids))
 
             if success:
                 typer.secho(
@@ -255,7 +304,7 @@ def create_task_modification_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("validate-dependencies")
-    def validate_dependencies_command(
+    def validate_dependencies_command( # Reverted to synchronous def
         ctx: typer.Context
     ):
         """
@@ -265,7 +314,7 @@ def create_task_modification_commands(app: typer.Typer):
             agent = ctx.obj["agent"]
             typer.echo("🔍 Validating task dependencies...")
             
-            is_valid, errors = agent.validate_dependencies()
+            is_valid, errors = run_async_tasks_sync(agent.validate_dependencies())
             
             if is_valid:
                 typer.secho("✅ All task dependencies are valid!", fg=typer.colors.GREEN)
@@ -273,20 +322,20 @@ def create_task_modification_commands(app: typer.Typer):
                 typer.secho("⚠️ Found dependency issues:", fg=typer.colors.YELLOW)
                 for error_type, messages in errors.items():
                     typer.echo(f"  - {error_type.replace('_', ' ').title()} Errors:")
-                    for msg in messages:
-                        typer.echo(f"    - {msg}")
-                typer.secho("\n💡 Use 'task-master fix-dependencies' to attempt to resolve these issues.", fg=typer.colors.BLUE)
-                raise typer.Exit(code=1)
+                for msg in messages:
+                    typer.echo(f"    - {msg}")
+            typer.secho("\n💡 Use 'task-master fix-dependencies' to attempt to resolve these issues.", fg=typer.colors.BLUE)
+            raise typer.Exit(code=1)
                 
         except Exception as e:
             typer.secho(f"❌ Error validating dependencies: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)
 
     @app.command("fix-dependencies")
-    def fix_dependencies_command(
+    def fix_dependencies_command( # Reverted to synchronous def
         ctx: typer.Context,
         remove_invalid: Annotated[bool, typer.Option("--remove-invalid", help="Attempt to remove dependencies that point to non-existent tasks.")] = False,
-        remove_circular: Annotated[bool, typer.Option("--remove-circular", help="Attempt to remove dependencies that cause circular relationships.")] = False,
+        remove_circular: Annotated[bool, typer.Option("--remove-circular", help="Attempt to remove dependencies that cause circular relationships.")] = False
     ):
         """
         Attempt to automatically fix common task dependency issues.
@@ -299,7 +348,7 @@ def create_task_modification_commands(app: typer.Typer):
             agent = ctx.obj["agent"]
             typer.echo("🛠️ Attempting to fix task dependencies...")
             
-            messages = asyncio.run(agent.fix_dependencies(remove_invalid=remove_invalid, remove_circular=remove_circular))
+            messages = run_async_tasks_sync(agent.fix_dependencies(remove_invalid=remove_invalid, remove_circular=remove_circular))
             
             for msg in messages:
                 if "Error" in msg or "Failed" in msg:

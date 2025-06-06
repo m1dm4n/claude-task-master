@@ -1,11 +1,12 @@
+
 """Main CLI application for the DevTask AI Assistant."""
 
-import os
 from typing import Optional
 from typing_extensions import Annotated
 import typer
+# Removed asyncio import as per user instruction
 
-from .models import create_models_app
+from .init_llm import create_llm_app
 from .project import create_project_commands
 from .planning import create_planning_commands
 from .task_query import create_task_query_commands
@@ -20,7 +21,7 @@ app = typer.Typer(
 )
 
 @app.callback(invoke_without_command=True)
-def main_callback(
+def main_callback( # Reverted to synchronous def
     ctx: typer.Context,
     workspace: Annotated[Optional[str], typer.Option(
         "--workspace", "-w",
@@ -35,14 +36,17 @@ def main_callback(
     if ctx.invoked_subcommand is None:
         pass
 
-    # Ensure os is imported for os.path.abspath and os.getcwd()
-    # This will be removed in a subsequent step after the path is correctly handled by ProjectIO
-    ctx.obj["workspace_path"] = os.path.abspath(workspace) if workspace else os.getcwd()
-    ctx.obj["agent"] = DevTaskAIAssistant(ctx.obj["workspace_path"])
+    # The workspace path is now handled internally by ProjectIO via DevTaskAIAssistant
+    # No need for os.path.abspath or os.getcwd() here.
+    ctx.obj = {}
+    ctx.obj["workspace_path"] = workspace if workspace else "." # Pass relative path or current dir
+    agent = DevTaskAIAssistant(ctx.obj["workspace_path"])
+    # Removed await agent._ainit_() - asynchronous initialization will be handled by Architect's refactoring
+    ctx.obj["agent"] = agent
 
 
 # Create and add subcommand group for model management
-models_app = create_models_app()
+models_app = create_llm_app()
 app.add_typer(models_app, name="models")
 
 # Add commands from other modules

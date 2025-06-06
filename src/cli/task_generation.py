@@ -4,7 +4,7 @@ import typer
 from typing_extensions import Annotated
 from typing import Optional, List
 from uuid import UUID
-import asyncio
+from ..utils.async_utils import run_async_tasks_sync
 
 from ..data_models import TaskStatus
 from .utils import parse_uuid_or_exit
@@ -14,7 +14,7 @@ def create_task_generation_commands(app: typer.Typer):
     """Add task generation-related commands to the main app."""
 
     @app.command("expand")
-    def expand_command(
+    def expand_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[Optional[str], typer.Option(
             "--task-id", "-id", help="ID of the task to expand.")] = None,
@@ -44,7 +44,7 @@ def create_task_generation_commands(app: typer.Typer):
                 typer.echo("🔄 Expanding all pending tasks...")
 
                 try:
-                    count = asyncio.run(agent.expand_all_pending_tasks(
+                    count = run_async_tasks_sync(agent.expand_all_pending_tasks(
                         num_subtasks_per_task=num_subtasks,
                         use_research=use_research
                     ))
@@ -69,7 +69,7 @@ def create_task_generation_commands(app: typer.Typer):
                 typer.echo(f"🔄 Expanding task {task_id_str}...")
 
                 try:
-                    updated_task = asyncio.run(agent.expand_task_with_subtasks(
+                    updated_task = run_async_tasks_sync(agent.expand_task_with_subtasks(
                         task_uuid,
                         num_subtasks=num_subtasks,
                         prompt_override=prompt_override,
@@ -118,7 +118,7 @@ def create_task_generation_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("clear-subtasks")
-    def clear_subtasks_command(
+    def clear_subtasks_command( # Reverted to synchronous def
         ctx: typer.Context,
         task_id_str: Annotated[Optional[str], typer.Option(
             "--task-id", "-id", help="ID of the task whose subtasks to clear.")] = None,
@@ -136,7 +136,7 @@ def create_task_generation_commands(app: typer.Typer):
             if all_tasks:
                 typer.echo("🔄 Clearing subtasks from all tasks...")
 
-                count = agent.clear_subtasks_for_all_tasks()
+                count = run_async_tasks_sync(agent.clear_subtasks_for_all_tasks())
 
                 if count > 0:
                     typer.secho(
@@ -150,7 +150,7 @@ def create_task_generation_commands(app: typer.Typer):
 
                 typer.echo(f"🔄 Clearing subtasks for task {task_id_str}...")
 
-                success = agent.clear_subtasks_for_task(task_uuid)
+                success = run_async_tasks_sync(agent.clear_subtasks_for_task(task_uuid))
 
                 if success:
                     typer.secho(
@@ -174,7 +174,7 @@ def create_task_generation_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("add-task")
-    def add_task_command(
+    def add_task_command( # Reverted to synchronous def
         ctx: typer.Context,
         description: Annotated[str, typer.Argument(help="Description or prompt for the new task.")],
         dependencies: Annotated[Optional[List[str]], typer.Option(
@@ -212,7 +212,7 @@ def create_task_generation_commands(app: typer.Typer):
 
             typer.echo("🔄 Generating new task...")
 
-            new_task = asyncio.run(agent.add_new_task(
+            new_task = run_async_tasks_sync(agent.add_new_task(
                 description=description,
                 dependencies_str=dependencies,
                 priority_str=priority,
@@ -245,7 +245,7 @@ def create_task_generation_commands(app: typer.Typer):
             raise typer.Exit(code=1)
 
     @app.command("remove-subtask")
-    def remove_subtask_command(
+    def remove_subtask_command( # Reverted to synchronous def
         ctx: typer.Context,
         subtask_id_str: Annotated[str, typer.Argument(
             help="ID of the subtask to remove.")]
@@ -260,7 +260,7 @@ def create_task_generation_commands(app: typer.Typer):
 
             typer.echo(f"🔄 Removing subtask {subtask_id_str}...")
 
-            success = agent.remove_subtask(subtask_uuid)
+            success = run_async_tasks_sync(agent.remove_subtask(subtask_uuid))
 
             if success:
                 typer.secho(

@@ -32,104 +32,66 @@ class ItemType(str, Enum):
 
 
 class Task(BaseModel):
-    """Represents a main task in the Task Master system.
-    This model is also used for subtasks, with `parent_id` indicating its parent.
-    """
     id: UUID = Field(default_factory=uuid4,
                      description="Unique identifier for the task. Using RFC 4122 UUID format.")
     title: str = Field(description="Concise title of the task.")
     description: str = Field(
         description="Detailed description of the task, including its purpose and scope.")
     status: TaskStatus = Field(
-        TaskStatus.PENDING, description="Current status of the task, indicating its progress in the workflow. If task is not started, it should be set to PENDING.")
-    dependencies: List[UUID] = Field(
-        default_factory=list, description="List of unique identifiers for tasks or subtasks that must be completed before this subtask can begin. Dependencies create execution order constraints and are used for scheduling, progress tracking, and identifying potential blockers in the task workflow."
-    )
+        default=TaskStatus.PENDING,
+        description="Current status of the task...")
     priority: TaskPriority = Field(
-        TaskPriority.MEDIUM, description="Priority level of the task.")
+        default=TaskPriority.MEDIUM,
+        description="Priority level of the task.")
     details: Optional[str] = Field(
-        None, description="In-depth implementation notes or AI-generated content.")
+        default=None,
+        description="In-depth implementation notes or AI-generated content.")
     testStrategy: Optional[str] = Field(
-        None, description="Proposed strategy for testing the task's completion.")
-    subtasks: List[Task] = Field(  # Changed from List[Task] to List[Task]
-        default_factory=list, description="List of subtasks for further decomposition."
-    )
+        default=None,
+        description="Proposed strategy for testing the task's completion.")
     complexity_score: Optional[int] = Field(
-        None, description="Complexity score of the task, if calculated.")
+        default=None,
+        description="Complexity score of the task, if calculated.")
     complexity_analysis_notes: Optional[str] = Field(
-        None, description="Notes from the complexity analysis, if performed.")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(
-        timezone.utc), description="Timestamp when the task was created.")
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(
-        timezone.utc), description="Timestamp when the task was last updated.")
+        default=None,
+        description="Notes from the complexity analysis, if performed.")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp when the task was created.")
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Timestamp when the task was last updated.")
     due_date: Optional[date] = Field(
-        None, description="Optional due date for the task, if applicable.")
-    parent_id: Optional[UUID] = Field(
-        None, description="ID of the parent task if this is a subtask.")
-
-
-class SubtaskLLMInput(BaseModel):
-    """A simplified Subtask model for LLM input."""
-    title: str = Field(description="Concise title of the subtask.")
-    description: str = Field(description="Detailed description of the subtask.")
-    priority: Optional[TaskPriority] = Field(None, description="Priority level of the subtask.")
-    details: Optional[str] = Field(None, description="In-depth implementation notes or AI-generated content for the subtask.")
-    testStrategy: Optional[str] = Field(None, description="Proposed strategy for testing the subtask's completion.")
-    dependencies: List[UUID] = Field(default_factory=list, description="List of unique identifiers for tasks or subtasks that must be completed before this subtask can begin.")
-    due_date: Optional[date] = Field(None, description="Optional due date for the subtask.")
-
-
-class TaskLLMInput(BaseModel):
-    """A simplified Task model for LLM input, excluding recursive fields."""
-    title: str = Field(description="Concise title of the task.")
-    description: str = Field(description="Detailed description of the task.")
-    status: Optional[TaskStatus] = Field(
-        None, description="Current status of the task.")
-    dependencies: List[UUID] = Field(
-        default_factory=list, description="List of unique identifiers for tasks that must be completed before this task can begin.")
-    priority: Optional[TaskPriority] = Field(
-        None, description="Priority level of the task.")
-    details: Optional[str] = Field(
-        None, description="In-depth implementation notes or AI-generated content.")
-    testStrategy: Optional[str] = Field(
-        None, description="Proposed strategy for testing the task's completion.")
-    due_date: Optional[date] = Field(
-        None, description="Optional due date for the task.")
-    parent_id: Optional[UUID] = Field(
-        None, description="ID of the parent task if this is a subtask.")
-
-
-class TaskLLMOutput(BaseModel):
-    """A simplified Task model for LLM output, excluding recursive fields and immutable fields."""
-    title: str = Field(description="Concise title of the task.")
-    description: str = Field(description="Detailed description of the task.")
-    status: Optional[TaskStatus] = Field(
-        None, description="Current status of the task.")
-    dependencies: Optional[List[UUID]] = Field(
-        None, description="List of unique identifiers for tasks that must be completed before this task can begin.")
-    priority: Optional[TaskPriority] = Field(
-        None, description="Priority level of the task.")
-    details: Optional[str] = Field(
-        None, description="In-depth implementation notes or AI-generated content.")
-    testStrategy: Optional[str] = Field(
-        None, description="Proposed strategy for testing the task's completion.")
-    due_date: Optional[date] = Field(
-        None, description="Optional due date for the task.")
-    parent_id: Optional[UUID] = Field(
-        None, description="ID of the parent task if this is a subtask.")
-    initial_subtasks: List[SubtaskLLMInput] = Field(
-        default_factory=list, description="List of initial subtasks generated by the LLM, each conforming to SubtaskLLMInput.")
+        default=None,
+        description="Optional due date for the task, if applicable.")
+    agent_type: Optional[str] = Field(
+        default=None,
+        description="The agent type responsible for the task.")
+    acceptance_criteria: List[str] = Field(
+        default_factory=list,
+        description="List of acceptance criteria for the task.")
+    parent: List[UUID] = Field(
+        default_factory=list,
+        description="List of UUIDs of parent task nodes in the graph."
+    )
+    children: List[UUID] = Field(
+        default_factory=list,
+        description="List of UUIDs of child task nodes in the graph."
+    )
 
 
 class DependencyFix(BaseModel):
     """Represents a suggested fix for task dependencies."""
-    task_id: UUID = Field(description="The ID of the task whose dependencies are to be modified.")
-    new_dependencies: List[UUID] = Field(default_factory=list, description="The new list of dependencies for the task. Omit dependencies to remove them.")
+    task_id: UUID = Field(
+        description="The ID of the task whose dependencies are to be modified.")
+    new_dependencies: List[UUID] = Field(
+        default_factory=list, description="The new list of dependencies for the task. Omit dependencies to remove them.")
 
 
 class DependencyFixesLLMOutput(BaseModel):
     """Represents the LLM's suggested fixes for dependencies."""
-    suggested_fixes: List[DependencyFix] = Field(default_factory=list, description="A list of suggested dependency modifications.")
+    suggested_fixes: List[DependencyFix] = Field(
+        default_factory=list, description="A list of suggested dependency modifications.")
 
 
 class ProjectPlan(BaseModel):
@@ -218,4 +180,3 @@ class AgentState(BaseModel):
         description="The current project plan being managed.")
     config: AppConfig = Field(
         description="The current application configuration.")
-    # Add other relevant state information as needed
