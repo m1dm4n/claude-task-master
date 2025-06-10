@@ -168,7 +168,7 @@ def create_task_modification_commands(app: typer.Typer):
             if item is None or item.parent:
                 typer.secho(
                     f"❌ Subtask with ID '{task_id_str}' not found or is a main task. Use `update-task` to update main tasks.", fg=typer.colors.RED)
-                raise typer.Exit(code=1)
+            raise typer.Exit(code=1)
 
             typer.echo(
                 f"🔄 Updating subtask '{item.title}' using {'research' if use_research else 'main'} model...")
@@ -221,145 +221,7 @@ def create_task_modification_commands(app: typer.Typer):
                 else:
                     typer.secho(
                         f"✅ Successfully moved task {task_id_str} to top-level.", fg=typer.colors.GREEN)
-            else:
-                typer.secho(
-                    f"❌ Failed to move task {task_id_str}. Check logs for details.", fg=typer.colors.RED)
-                raise typer.Exit(code=1)
-
         except Exception as e:
             typer.secho(
                 f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-
-    @app.command("add-dependency")
-    def add_dependency_command( # Reverted to synchronous def
-        ctx: typer.Context,
-        task_id_str: Annotated[str, typer.Argument(help="ID of the task to add dependencies to.")],
-        dependency_ids_str: Annotated[List[str], typer.Argument(
-            help="Space-separated list of dependency IDs (UUIDs).")]
-    ):
-        """
-        Add one or more dependencies to a task.
-        """
-        try:
-            agent = ctx.obj["agent"]
-
-            task_uuid = parse_uuid_or_exit(task_id_str, "task ID")
-
-            dependency_uuids: List[UUID] = []
-            for dep_id_str in dependency_ids_str:
-                dependency_uuids.append(parse_uuid_or_exit(dep_id_str, "dependency ID"))
-
-            typer.echo(f"🔄 Adding dependencies to task {task_id_str}...")
-
-            success = run_async_tasks_sync(agent.add_dependency(task_uuid, dependency_uuids))
-
-            if success:
-                typer.secho(
-                    f"✅ Successfully added dependencies to task {task_id_str}.", fg=typer.colors.GREEN)
-            else:
-                typer.secho(
-                    f"❌ Failed to add dependencies to task {task_id_str}. Check logs for details.", fg=typer.colors.RED)
-                raise typer.Exit(code=1)
-
-        except Exception as e:
-            typer.secho(
-                f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-
-    @app.command("remove-dependency")
-    def remove_dependency_command( # Reverted to synchronous def
-        ctx: typer.Context,
-        task_id_str: Annotated[str, typer.Argument(help="ID of the task to remove dependencies from.")],
-        dependency_ids_str: Annotated[List[str], typer.Argument(
-            help="Space-separated list of dependency IDs (UUIDs) to remove.")]
-    ):
-        """
-        Remove one or more dependencies from a task.
-        """
-        try:
-            agent = ctx.obj["agent"]
-
-            task_uuid = parse_uuid_or_exit(task_id_str, "task ID")
-
-            dependency_uuids: List[UUID] = []
-            for dep_id_str in dependency_ids_str:
-                dependency_uuids.append(parse_uuid_or_exit(dep_id_str, "dependency ID"))
-
-            typer.echo(f"🔄 Removing dependencies from task {task_id_str}...")
-
-            success = run_async_tasks_sync(agent.remove_dependency(task_uuid, dependency_uuids))
-
-            if success:
-                typer.secho(
-                    f"✅ Successfully removed dependencies from task {task_id_str}.", fg=typer.colors.GREEN)
-            else:
-                typer.secho(
-                    f"❌ Failed to remove dependencies from task {task_id_str}. Check logs for details.", fg=typer.colors.RED)
-                raise typer.Exit(code=1)
-
-        except Exception as e:
-            typer.secho(
-                f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-
-    @app.command("validate-dependencies")
-    def validate_dependencies_command( # Reverted to synchronous def
-        ctx: typer.Context
-    ):
-        """
-        Validate all task dependencies in the current project plan.
-        """
-        try:
-            agent = ctx.obj["agent"]
-            typer.echo("🔍 Validating task dependencies...")
-            
-            is_valid, errors = run_async_tasks_sync(agent.validate_dependencies())
-            
-            if is_valid:
-                typer.secho("✅ All task dependencies are valid!", fg=typer.colors.GREEN)
-            else:
-                typer.secho("⚠️ Found dependency issues:", fg=typer.colors.YELLOW)
-                for error_type, messages in errors.items():
-                    typer.echo(f"  - {error_type.replace('_', ' ').title()} Errors:")
-                for msg in messages:
-                    typer.echo(f"    - {msg}")
-            typer.secho("\n💡 Use 'task-master fix-dependencies' to attempt to resolve these issues.", fg=typer.colors.BLUE)
-            raise typer.Exit(code=1)
-                
-        except Exception as e:
-            typer.secho(f"❌ Error validating dependencies: {e}", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-
-    @app.command("fix-dependencies")
-    def fix_dependencies_command( # Reverted to synchronous def
-        ctx: typer.Context,
-        remove_invalid: Annotated[bool, typer.Option("--remove-invalid", help="Attempt to remove dependencies that point to non-existent tasks.")] = False,
-        remove_circular: Annotated[bool, typer.Option("--remove-circular", help="Attempt to remove dependencies that cause circular relationships.")] = False
-    ):
-        """
-        Attempt to automatically fix common task dependency issues.
-        """
-        if not remove_invalid and not remove_circular:
-            typer.secho("❌ Please specify at least one type of fix: --remove-invalid or --remove-circular.", fg=typer.colors.RED)
-            raise typer.Exit(code=1)
-
-        try:
-            agent = ctx.obj["agent"]
-            typer.echo("🛠️ Attempting to fix task dependencies...")
-            
-            messages = run_async_tasks_sync(agent.fix_dependencies(remove_invalid=remove_invalid, remove_circular=remove_circular))
-            
-            for msg in messages:
-                if "Error" in msg or "Failed" in msg:
-                    typer.secho(f"❌ {msg}", fg=typer.colors.RED)
-                elif "Warning" in msg or "remain" in msg:
-                    typer.secho(f"⚠️ {msg}", fg=typer.colors.YELLOW)
-                else:
-                    typer.secho(f"✅ {msg}", fg=typer.colors.GREEN)
-            
-            typer.echo("Please run 'task-master validate-dependencies' to confirm all issues are resolved.")
-                
-        except Exception as e:
-            typer.secho(f"❌ Error fixing dependencies: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)

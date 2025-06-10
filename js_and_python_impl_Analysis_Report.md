@@ -21,7 +21,7 @@
 * **Nature:** Appears to be a newer, more focused AI agent core or library rather than a standalone CLI application. The provided [`src/main.py`](src/main.py) acts as a demonstration or test harness for its capabilities.
 * **Core Focus:** Centers on the `DevTaskAIAssistant` class ([`src/agent_core.py`](src/agent_core.py)), which provides AI-driven functionalities for project planning from a high-level goal, refining existing tasks, and performing research relevant to tasks.
 * **AI Integration:** Utilizes `pydantic-ai` for structured interaction with LLMs and data validation. Currently, the implementation in [`src/llm_services.py`](src/llm_services.py) is hardcoded to use Google Gemini models for both main agent operations and research.
-* **Data Persistence:** Primarily in-memory using Pydantic data models (`ProjectPlan`, `Task`, `Subtask` defined in [`src/data_models.py`](src/data_models.py)). The provided `src/` code does not include explicit mechanisms for file-based task persistence (e.g., reading from or writing to a `tasks.json` equivalent or individual task files).
+* **Data Persistence:** Primarily in-memory using Pydantic data models (`ProjectPlan`, `Task`, `Task` defined in [`src/data_models.py`](src/data_models.py)). The provided `src/` code does not include explicit mechanisms for file-based task persistence (e.g., reading from or writing to a `tasks.json` equivalent or individual task files).
 * **Structure:** Python application core with clear separation of concerns: `agent_core.py` for main logic, `config_manager.py` for configuration, `llm_services.py` for LLM interactions, and `data_models.py` for data structures. Leverages `asyncio` for asynchronous LLM calls.
 
 **C. Project Documentation (`docs/`)**
@@ -92,8 +92,8 @@
 
 * **Data Storage:** Primarily in-memory representation using Pydantic models:
   * `ProjectPlan`: Contains `project_title`, `overall_goal`, and a list of `Task` objects.
-  * `Task`: Fields include `id` (UUID string), `title`, `description`, `status` (enum `TaskStatus`), `priority` (enum `TaskPriority`), `details`, `dependencies` (List of strings, likely task UUIDs), `subtasks` (List of `Subtask`), `estimated_effort_hours`, `due_date`, `created_at`, `updated_at`.
-  * `Subtask`: Fields include `id` (string, typically `parent_uuid.sub_uuid`), `title`, `description`, `status`, `estimated_effort_hours`.
+  * `Task`: Fields include `id` (UUID string), `title`, `description`, `status` (enum `TaskStatus`), `priority` (enum `TaskPriority`), `details`, `dependencies` (List of strings, likely task UUIDs), `subtasks` (List of `Task`), `estimated_effort_hours`, `due_date`, `created_at`, `updated_at`.
+  * `Task`: Fields include `id` (string, typically `parent_uuid.sub_uuid`), `title`, `description`, `status`, `estimated_effort_hours`.
 * **Task Structure (Pydantic models):**
   * Generally aligns with the conceptual fields from the documentation (title, description, status, priority, details, dependencies, subtasks).
   * Introduces UUIDs for task IDs, offering global uniqueness.
@@ -170,7 +170,7 @@
 ### VI. Adherence to Documentation (`docs/`)
 
 * **Python `src/` vs. Documentation:**
-  * **Partial Alignment:** The Python Pydantic models (`Task`, `Subtask`) conceptually align with many fields described in [`docs/task-structure.md`](docs/task-structure.md) (e.g., title, description, status, priority, details, dependencies, subtasks). The AI-driven planning and refinement in Python reflect high-level goals of an AI task assistant.
+  * **Partial Alignment:** The Python Pydantic models (`Task`, `Task`) conceptually align with many fields described in [`docs/task-structure.md`](docs/task-structure.md) (e.g., title, description, status, priority, details, dependencies, subtasks). The AI-driven planning and refinement in Python reflect high-level goals of an AI task assistant.
   * **Significant Deviations/Omissions:**
     * **CLI:** The extensive CLI commands detailed in documentation (e.g., `list`, `generate`, `set-status`, `expand`, `analyze-complexity`, `add-dep`) are not implemented in the Python `src/` code.
     * **File-based Persistence:** The documented system of `tasks.json` and individual `.txt` task files is not implemented in the Python `src/` code.

@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 from src.data_models import ProjectPlan, Task, DependencyFixesLLMOutput
 from src.agent_core.services.llm_service import LLMService
 from src.agent_prompts import FIX_DEPENDENCIES_PROMPT
+from src.agent_core.services.task_components.task_query_service import TaskQueryService
 
 
 class DependencyResolver:
     def __init__(self, llm_service: LLMService):
         self.llm_service = llm_service
+        self.task_query_service = TaskQueryService()
 
     async def suggest_dependency_fixes(self, project_plan: ProjectPlan, validation_errors: Dict[str, List[str]], model_type: Literal["main", "research"] = "main") -> Optional[ProjectPlan]:
         """
@@ -69,23 +71,30 @@ class DependencyResolver:
                         logfire.warning(f"Skipping LLM suggested fix for task {fix.task_id} as it does not correspond to an allowed or reported error type based on input flags.")
                         continue
 
-                    found_task = False
-                    for task in updated_plan.tasks:
-                        if task.id == fix.task_id:
-                            task.dependencies = fix.new_dependencies
-                            task.updated_at = datetime.now(timezone.utc)
-                            found_task = True
-                            logfire.info(f"Applied fix for task {task.id}: new dependencies {task.dependencies}")
-                            break
-                        for subtask in task.subtasks:
-                            if subtask.id == fix.task_id:
-                                subtask.dependencies = fix.new_dependencies
-                                subtask.updated_at = datetime.now(timezone.utc)
-                                found_task = True
-                                logfire.info(f"Applied fix for subtask {subtask.id}: new dependencies {subtask.dependencies}")
-                                break
-                    if not found_task:
-                        logfire.warning(f"Task/subtask with ID {fix.task_id} not found in plan for applying fix.")
+                    # found_task = False # replaced by task_query_service
+                    # for task in updated_plan.tasks: # replaced by task_query_service
+                    #     if task.id == fix.task_id: # replaced by task_query_service
+                    #         task.dependencies = fix.new_dependencies # replaced by task_query_service
+                    #         task.updated_at = datetime.now(timezone.utc) # replaced by task_query_service
+                    #         found_task = True # replaced by task_query_service
+                    #         logfire.info(f"Applied fix for task {task.id}: new dependencies {task.dependencies}") # replaced by task_query_service
+                    #         break # replaced by task_query_service
+                    #     for subtask in task.subtasks: # replaced by task_query_service
+                    #         if subtask.id == fix.task_id: # replaced by task_query_service
+                    #             subtask.dependencies = fix.new_dependencies # replaced by task_query_service
+                    #             subtask.updated_at = datetime.now(timezone.utc) # replaced by task_query_service
+                    #             found_task = True # replaced by task_query_service
+                    #             logfire.info(f"Applied fix for subtask {subtask.id}: new dependencies {subtask.dependencies}") # replaced by task_query_service
+                    #             break # replaced by task_query_service
+                    # if not found_task: # replaced by task_query_service
+                    #     logfire.warning(f"Task/subtask with ID {fix.task_id} not found in plan for applying fix.") # replaced by task_query_service
+                    task = self.task_query_service.get_task_by_id(updated_plan, fix.task_id)
+                    if task:
+                        task.dependencies = fix.new_dependencies
+                        task.updated_at = datetime.now(timezone.utc)
+                        logfire.info(f"Applied fix for task {task.id}: new dependencies {task.dependencies}")
+                    else:
+                        logfire.warning(f"Task with ID {fix.task_id} not found in plan for applying fix.")
                 
                 return updated_plan
             else:

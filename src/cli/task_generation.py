@@ -6,7 +6,7 @@ from typing import Optional, List
 from uuid import UUID
 from ..utils.async_utils import run_async_tasks_sync
 
-from ..data_models import TaskStatus
+from ..data_models import Task
 from .utils import parse_uuid_or_exit
 
 
@@ -80,18 +80,22 @@ def create_task_generation_commands(app: typer.Typer):
                         typer.secho(
                             f"✅ Successfully expanded task '{updated_task.title}'", fg=typer.colors.GREEN)
                         typer.echo(
-                            f"📋 Task now has {len(updated_task.subtasks)} subtasks:")
+                            f"📋 Task now has {len(updated_task.children)} subtasks:")
 
-                        for i, subtask in enumerate(updated_task.subtasks, 1):
-                            typer.secho(
-                                f"  {i}. {subtask.title}", fg=typer.colors.BLUE)
-                            typer.echo(f"     ID: {subtask.id}")
-                            typer.echo(
-                                f"     Description: {subtask.description}")
-                            if subtask.priority:
+                        for i, subtask_id in enumerate(updated_task.children, 1):
+                            subtask = run_async_tasks_sync(agent.task_service.get_task_by_id(subtask_id))
+                            if subtask:
+                                typer.secho(
+                                    f"  {i}. {subtask.title}", fg=typer.colors.BLUE)
+                                typer.echo(f"     ID: {subtask.id}")
                                 typer.echo(
-                                    f"     Priority: {subtask.priority.value}")
-                            typer.echo()
+                                    f"     Description: {subtask.description}")
+                                if subtask.priority:
+                                    typer.echo(
+                                        f"     Priority: {subtask.priority.value}")
+                                typer.echo()
+                            else:
+                                typer.echo(f"Subtask with id {subtask_id} not found")
                     else:
                         typer.secho(
                             f"❌ Task with ID '{task_id_str}' not found or could not be expanded.", fg=typer.colors.RED)
@@ -104,13 +108,13 @@ def create_task_generation_commands(app: typer.Typer):
             else:
                 typer.secho(
                     "❌ Please specify either --task-id <UUID> to expand a specific task or --all-pending to expand all pending tasks.", fg=typer.colors.RED)
-                typer.echo("\nExamples:")
-                typer.echo(
-                    "  task-master expand --task-id 123e4567-e89b-12d3-a456-426614174000")
-                typer.echo("  task-master expand --all-pending")
-                typer.echo(
-                    "  task-master expand --task-id 123e4567-e89b-12d3-a456-426614174000 --num 5 --research")
-                raise typer.Exit(code=1)
+            typer.echo("\nExamples:")
+            typer.echo(
+                "  task-master expand --task-id 123e4567-e89b-12d3-a456-426614174000")
+            typer.echo("  task-master expand --all-pending")
+            typer.echo(
+                "  task-master expand --task-id 123e4567-e89b-12d3-a456-426614174000 --num 5 --research")
+            raise typer.Exit(code=1)
 
         except Exception as e:
             typer.secho(
@@ -165,8 +169,8 @@ def create_task_generation_commands(app: typer.Typer):
                 typer.echo("\nExamples:")
                 typer.echo(
                     "  task-master clear-subtasks --task-id 123e4567-e89b-12d3-a456-426614174000")
-                typer.echo("  task-master clear-subtasks --all")
-                raise typer.Exit(code=1)
+            typer.echo("  task-master clear-subtasks --all")
+            raise typer.Exit(code=1)
 
         except Exception as e:
             typer.secho(
@@ -223,12 +227,12 @@ def create_task_generation_commands(app: typer.Typer):
             if new_task:
                 typer.secho(
                     f"✅ Successfully added new task: {new_task.title} (ID: {new_task.id})", fg=typer.colors.GREEN)
-                if new_task.subtasks:
-                    typer.echo(
-                        f"📋 Generated {len(new_task.subtasks)} initial subtasks:")
-                    for i, subtask in enumerate(new_task.subtasks, 1):
-                        typer.secho(
-                            f"  {i}. {subtask.title} (ID: {subtask.id})", fg=typer.colors.BLUE)
+                # if new_task.subtasks:
+                #     typer.echo(
+                #         f"📋 Generated {len(new_task.subtasks)} initial subtasks:")
+                #     for i, subtask in enumerate(new_task.subtasks, 1):
+                #         typer.secho(
+                #             f"  {i}. {subtask.title} (ID: {subtask.id})", fg=typer.colors.BLUE)
             else:
                 typer.secho("❌ Failed to add new task.", fg=typer.colors.RED)
                 if parent_id and not new_task:
@@ -274,3 +278,36 @@ def create_task_generation_commands(app: typer.Typer):
             typer.secho(
                 f"❌ An unexpected error occurred: {e}", fg=typer.colors.RED)
             raise typer.Exit(code=1)
+
+def _display_task_details(task: Task):
+    """Helper function to display task details."""
+    typer.echo(f"✨ Title: {task.title}",
+                fg=typer.colors.CYAN, bold=True)
+    typer.echo(f"   Description: {task.description}")
+    typer.echo(f"   Status: {task.status.value}")
+    if task.priority:
+        typer.echo(f"   Priority: {task.priority.value}")
+    # Remove dependencies
+    # if item.dependencies:
+    #     typer.echo(
+    #         f"   Dependencies: {', '.join([str(d) for d in item.dependencies])}")
+    # Remove subtasks
+    # if item.subtasks:
+    #     typer.echo("   Subtasks:")
+    #     for subtask in item.subtasks:
+    #         typer.echo(f"     - {subtask.title} (ID: {subtask.id})")
+    # Remove parent_id
+    # if item.parent_id:
+    #     typer.echo(f"   Parent ID: {item.parent_id}")
+    if task.parent:
+        typer.echo(f"   Parent IDs: {', '.join([str(p) for p in task.parent])}")
+    if task.children:
+        typer.echo(f"   Children IDs: {', '.join([str(c) for c in task.children])}")
+    if task.implementation_notes:
+        typer.echo(f"   Implementation Notes:\n{task.implementation_notes}")
+    if task.test_strategy:
+        typer.echo(f"   Test Strategy:\n{task.test_strategy}")
+    typer.echo(f"   Created At: {task.created_at}")
+    if task.due_date:
+        typer.echo(f"   Due Date: {task.due_date}")
+    typer.echo("=" * 50)
