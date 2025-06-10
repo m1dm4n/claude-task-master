@@ -24,6 +24,10 @@ import {
 } from './task-manager.js';
 import { getProjectName, getDefaultSubtasks } from './config-manager.js';
 import { TASK_STATUS_OPTIONS } from '../../src/constants/task-status.js';
+import {
+	TASKMASTER_CONFIG_FILE,
+	TASKMASTER_TASKS_FILE
+} from '../../src/constants/paths.js';
 import { getTaskMasterVersion } from '../../src/utils/getVersion.js';
 
 // Create a color gradient for the banner
@@ -36,7 +40,7 @@ const warmGradient = gradient(['#fb8b24', '#e36414', '#9a031e']);
 function displayBanner() {
 	if (isSilentMode()) return;
 
-	console.clear();
+	// console.clear(); // Removing this to avoid clearing the terminal per command
 	const bannerText = figlet.textSync('Task Master', {
 		font: 'Standard',
 		horizontalLayout: 'default',
@@ -74,6 +78,8 @@ function displayBanner() {
  * @returns {Object} Spinner object
  */
 function startLoadingIndicator(message) {
+	if (isSilentMode()) return null;
+
 	const spinner = ora({
 		text: message,
 		color: 'cyan'
@@ -83,12 +89,72 @@ function startLoadingIndicator(message) {
 }
 
 /**
- * Stop a loading indicator
+ * Stop a loading indicator (basic stop, no success/fail indicator)
  * @param {Object} spinner - Spinner object to stop
  */
 function stopLoadingIndicator(spinner) {
-	if (spinner && spinner.stop) {
+	if (spinner && typeof spinner.stop === 'function') {
 		spinner.stop();
+	}
+}
+
+/**
+ * Complete a loading indicator with success (shows checkmark)
+ * @param {Object} spinner - Spinner object to complete
+ * @param {string} message - Optional success message (defaults to current text)
+ */
+function succeedLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.succeed === 'function') {
+		if (message) {
+			spinner.succeed(message);
+		} else {
+			spinner.succeed();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with failure (shows X)
+ * @param {Object} spinner - Spinner object to fail
+ * @param {string} message - Optional failure message (defaults to current text)
+ */
+function failLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.fail === 'function') {
+		if (message) {
+			spinner.fail(message);
+		} else {
+			spinner.fail();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with warning (shows warning symbol)
+ * @param {Object} spinner - Spinner object to warn
+ * @param {string} message - Optional warning message (defaults to current text)
+ */
+function warnLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.warn === 'function') {
+		if (message) {
+			spinner.warn(message);
+		} else {
+			spinner.warn();
+		}
+	}
+}
+
+/**
+ * Complete a loading indicator with info (shows info symbol)
+ * @param {Object} spinner - Spinner object to complete with info
+ * @param {string} message - Optional info message (defaults to current text)
+ */
+function infoLoadingIndicator(spinner, message = null) {
+	if (spinner && typeof spinner.info === 'function') {
+		if (message) {
+			spinner.info(message);
+		} else {
+			spinner.info();
+		}
 	}
 }
 
@@ -228,14 +294,14 @@ function getStatusWithColor(status, forTable = false) {
 	}
 
 	const statusConfig = {
-		done: { color: chalk.green, icon: '✅', tableIcon: '✓' },
-		completed: { color: chalk.green, icon: '✅', tableIcon: '✓' },
-		pending: { color: chalk.yellow, icon: '⏱️', tableIcon: '⏱' },
+		done: { color: chalk.green, icon: '✓', tableIcon: '✓' },
+		completed: { color: chalk.green, icon: '✓', tableIcon: '✓' },
+		pending: { color: chalk.yellow, icon: '○', tableIcon: '⏱' },
 		'in-progress': { color: chalk.hex('#FFA500'), icon: '🔄', tableIcon: '►' },
-		deferred: { color: chalk.gray, icon: '⏱️', tableIcon: '⏱' },
-		blocked: { color: chalk.red, icon: '❌', tableIcon: '✗' },
-		review: { color: chalk.magenta, icon: '👀', tableIcon: '👁' },
-		cancelled: { color: chalk.gray, icon: '❌', tableIcon: '✗' }
+		deferred: { color: chalk.gray, icon: 'x', tableIcon: '⏱' },
+		blocked: { color: chalk.red, icon: '!', tableIcon: '✗' },
+		review: { color: chalk.magenta, icon: '?', tableIcon: '?' },
+		cancelled: { color: chalk.gray, icon: '❌', tableIcon: 'x' }
 	};
 
 	const config = statusConfig[status.toLowerCase()] || {
@@ -379,8 +445,6 @@ function formatDependenciesWithStatus(
  * Display a comprehensive help guide
  */
 function displayHelp() {
-	displayBanner();
-
 	// Get terminal width - moved to top of function to make it available throughout
 	const terminalWidth = process.stdout.columns || 100; // Default to 100 if can't detect
 
@@ -460,6 +524,11 @@ function displayHelp() {
 					name: 'set-status',
 					args: '--id=<id> --status=<status>',
 					desc: `Update task status (${TASK_STATUS_OPTIONS.join(', ')})`
+				},
+				{
+					name: 'sync-readme',
+					args: '[--with-subtasks] [--status=<status>]',
+					desc: 'Export tasks to README.md with professional formatting'
 				},
 				{
 					name: 'update',
@@ -686,7 +755,7 @@ function displayHelp() {
 
 	configTable.push(
 		[
-			`${chalk.yellow('.taskmasterconfig')}${chalk.reset('')}`,
+			`${chalk.yellow(TASKMASTER_CONFIG_FILE)}${chalk.reset('')}`,
 			`${chalk.white('AI model configuration file (project root)')}${chalk.reset('')}`,
 			`${chalk.dim('Managed by models cmd')}${chalk.reset('')}`
 		],
@@ -741,9 +810,9 @@ function displayHelp() {
  * @returns {string} Colored complexity score
  */
 function getComplexityWithColor(score) {
-	if (score <= 3) return chalk.green(`🟢 ${score}`);
-	if (score <= 6) return chalk.yellow(`🟡 ${score}`);
-	return chalk.red(`🔴 ${score}`);
+	if (score <= 3) return chalk.green(`● ${score}`);
+	if (score <= 6) return chalk.yellow(`● ${score}`);
+	return chalk.red(`● ${score}`);
 }
 
 /**
@@ -763,8 +832,6 @@ function truncateString(str, maxLength) {
  * @param {string} tasksPath - Path to the tasks.json file
  */
 async function displayNextTask(tasksPath, complexityReportPath = null) {
-	displayBanner();
-
 	// Read the tasks file
 	const data = readJSON(tasksPath);
 	if (!data || !data.tasks) {
@@ -1035,8 +1102,6 @@ async function displayTaskById(
 	complexityReportPath = null,
 	statusFilter = null
 ) {
-	displayBanner();
-
 	// Read the tasks file
 	const data = readJSON(tasksPath);
 	if (!data || !data.tasks) {
@@ -1491,8 +1556,6 @@ async function displayTaskById(
  * @param {string} reportPath - Path to the complexity report file
  */
 async function displayComplexityReport(reportPath) {
-	displayBanner();
-
 	// Check if the report exists
 	if (!fs.existsSync(reportPath)) {
 		console.log(
@@ -1524,10 +1587,18 @@ async function displayComplexityReport(reportPath) {
 		if (answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes') {
 			// Call the analyze-complexity command
 			console.log(chalk.blue('Generating complexity report...'));
+			const tasksPath = TASKMASTER_TASKS_FILE;
+			if (!fs.existsSync(tasksPath)) {
+				console.error(
+					'❌ No tasks.json file found. Please run "task-master init" or create a tasks.json file.'
+				);
+				return null;
+			}
+
 			await analyzeTaskComplexity({
 				output: reportPath,
 				research: false, // Default to no research for speed
-				file: 'tasks/tasks.json'
+				file: tasksPath
 			});
 			// Read the newly generated report
 			return displayComplexityReport(reportPath);
@@ -1842,7 +1913,7 @@ function displayApiKeyStatus(statusReport) {
 	console.log(table.toString());
 	console.log(
 		chalk.gray(
-			'  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in .taskmasterconfig.'
+			`  Note: Some providers (e.g., Azure, Ollama) may require additional endpoint configuration in ${TASKMASTER_CONFIG_FILE}.`
 		)
 	);
 }
@@ -2081,5 +2152,9 @@ export {
 	displayApiKeyStatus,
 	displayModelConfiguration,
 	displayAvailableModels,
-	displayAiUsageSummary
+	displayAiUsageSummary,
+	succeedLoadingIndicator,
+	failLoadingIndicator,
+	warnLoadingIndicator,
+	infoLoadingIndicator
 };

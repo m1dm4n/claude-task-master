@@ -1,5 +1,218 @@
 # task-master-ai
 
+## 0.16.2
+
+### Patch Changes
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`1ece6f1`](https://github.com/eyaltoledano/claude-task-master/commit/1ece6f19048df6ae2a0b25cbfb84d2c0f430642c) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - improve findTasks algorithm for resolving tasks path
+
+- [#695](https://github.com/eyaltoledano/claude-task-master/pull/695) [`ee0be04`](https://github.com/eyaltoledano/claude-task-master/commit/ee0be04302cc602246de5cd296291db69bc8b300) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix update tool on MCP giving `No valid tasks found`
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`27edbd8`](https://github.com/eyaltoledano/claude-task-master/commit/27edbd8f3fe5e2ac200b80e7f27f4c0e74a074d6) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Enhanced add-task fuzzy search intelligence and improved user experience
+
+  **Smarter Task Discovery:**
+
+  - Remove hardcoded category system that always matched "Task management"
+  - Eliminate arbitrary limits on fuzzy search results (5→25 high relevance, 3→10 medium relevance, 8→20 detailed tasks)
+  - Improve semantic weighting in Fuse.js search (details=3, description=2, title=1.5) for better relevance
+  - Generate context-driven task recommendations based on true semantic similarity
+
+  **Enhanced Terminal Experience:**
+
+  - Fix duplicate banner display issue that was "eating" terminal history (closes #553)
+  - Remove console.clear() and redundant displayBanner() calls from UI functions
+  - Preserve command history for better development workflow
+  - Streamline banner display across all commands (list, next, show, set-status, clear-subtasks, dependency commands)
+
+  **Visual Improvements:**
+
+  - Replace emoji complexity indicators with clean filled circle characters (●) for professional appearance
+  - Improve consistency and readability of task complexity display
+
+  **AI Provider Compatibility:**
+
+  - Change generateObject mode from 'tool' to 'auto' for better cross-provider compatibility
+  - Add qwen3-235n-a22b:free model support (closes #687)
+  - Add smart warnings for free OpenRouter models with limitations (rate limits, restricted context, no tool_use)
+
+  **Technical Improvements:**
+
+  - Enhanced context generation in add-task to rely on semantic similarity rather than rigid pattern matching
+  - Improved dependency analysis and common pattern detection
+  - Better handling of task relationships and relevance scoring
+  - More intelligent task suggestion algorithms
+
+  The add-task system now provides truly relevant task context based on semantic understanding rather than arbitrary categories and limits, while maintaining a cleaner and more professional terminal experience.
+
+- [#655](https://github.com/eyaltoledano/claude-task-master/pull/655) [`edaa5fe`](https://github.com/eyaltoledano/claude-task-master/commit/edaa5fe0d56e0e4e7c4370670a7a388eebd922ac) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix double .taskmaster directory paths in file resolution utilities
+
+  - Closes #636
+
+- [#671](https://github.com/eyaltoledano/claude-task-master/pull/671) [`86ea6d1`](https://github.com/eyaltoledano/claude-task-master/commit/86ea6d1dbc03eeb39f524f565b50b7017b1d2c9c) Thanks [@joedanz](https://github.com/joedanz)! - Add one-click MCP server installation for Cursor
+
+- [#699](https://github.com/eyaltoledano/claude-task-master/pull/699) [`2e55757`](https://github.com/eyaltoledano/claude-task-master/commit/2e55757b2698ba20b78f09ec0286951297510b8e) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Add sync-readme command for a task export to GitHub README
+
+  Introduces a new `sync-readme` command that exports your task list to your project's README.md file.
+
+  **Features:**
+
+  - **Flexible filtering**: Supports `--status` filtering (e.g., pending, done) and `--with-subtasks` flag
+  - **Smart content management**: Automatically replaces existing exports or appends to new READMEs
+  - **Metadata display**: Shows export timestamp, subtask inclusion status, and filter settings
+
+  **Usage:**
+
+  - `task-master sync-readme` - Export tasks without subtasks
+  - `task-master sync-readme --with-subtasks` - Include subtasks in export
+  - `task-master sync-readme --status=pending` - Only export pending tasks
+  - `task-master sync-readme --status=done --with-subtasks` - Export completed tasks with subtasks
+
+  Perfect for showcasing project progress on GitHub. Experimental. Open to feedback.
+
+## 0.16.2-rc.0
+
+### Patch Changes
+
+- [#655](https://github.com/eyaltoledano/claude-task-master/pull/655) [`edaa5fe`](https://github.com/eyaltoledano/claude-task-master/commit/edaa5fe0d56e0e4e7c4370670a7a388eebd922ac) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix double .taskmaster directory paths in file resolution utilities
+
+  - Closes #636
+
+- [#671](https://github.com/eyaltoledano/claude-task-master/pull/671) [`86ea6d1`](https://github.com/eyaltoledano/claude-task-master/commit/86ea6d1dbc03eeb39f524f565b50b7017b1d2c9c) Thanks [@joedanz](https://github.com/joedanz)! - Add one-click MCP server installation for Cursor
+
+## 0.16.1
+
+### Patch Changes
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix bedrock issues
+
+- [#648](https://github.com/eyaltoledano/claude-task-master/pull/648) [`9b4168b`](https://github.com/eyaltoledano/claude-task-master/commit/9b4168bb4e4dfc2f4fb0cf6bd5f81a8565879176) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP tool calls logging errors
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Update rules for new directory structure
+
+- [#648](https://github.com/eyaltoledano/claude-task-master/pull/648) [`9b4168b`](https://github.com/eyaltoledano/claude-task-master/commit/9b4168bb4e4dfc2f4fb0cf6bd5f81a8565879176) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix bug in expand_all mcp tool
+
+- [#641](https://github.com/eyaltoledano/claude-task-master/pull/641) [`ad61276`](https://github.com/eyaltoledano/claude-task-master/commit/ad612763ffbdd35aa1b593c9613edc1dc27a8856) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix MCP crashing after certain commands due to console logs
+
+## 0.16.0
+
+### Minor Changes
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add AWS bedrock support
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - # Add Google Vertex AI Provider Integration
+
+  - Implemented `VertexAIProvider` class extending BaseAIProvider
+  - Added authentication and configuration handling for Vertex AI
+  - Updated configuration manager with Vertex-specific getters
+  - Modified AI services unified system to integrate the provider
+  - Added documentation for Vertex AI setup and configuration
+  - Updated environment variable examples for Vertex AI support
+  - Implemented specialized error handling for Vertex-specific issues
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for Azure
+
+- [#612](https://github.com/eyaltoledano/claude-task-master/pull/612) [`669b744`](https://github.com/eyaltoledano/claude-task-master/commit/669b744ced454116a7b29de6c58b4b8da977186a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Increased minimum required node version to > 18 (was > 14)
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Renamed baseUrl to baseURL
+
+- [#604](https://github.com/eyaltoledano/claude-task-master/pull/604) [`80735f9`](https://github.com/eyaltoledano/claude-task-master/commit/80735f9e60c7dda7207e169697f8ac07b6733634) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add TASK_MASTER_PROJECT_ROOT env variable supported in mcp.json and .env for project root resolution
+
+  - Some users were having issues where the MCP wasn't able to detect the location of their project root, you can now set the `TASK_MASTER_PROJECT_ROOT` environment variable to the root of your project.
+
+- [#619](https://github.com/eyaltoledano/claude-task-master/pull/619) [`3f64202`](https://github.com/eyaltoledano/claude-task-master/commit/3f64202c9feef83f2bf383c79e4367d337c37e20) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Consolidate Task Master files into unified .taskmaster directory structure
+
+  This release introduces a new consolidated directory structure that organizes all Task Master files under a single `.taskmaster/` directory for better project organization and cleaner workspace management.
+
+  **New Directory Structure:**
+
+  - `.taskmaster/tasks/` - Task files (previously `tasks/`)
+  - `.taskmaster/docs/` - Documentation including PRD files (previously `scripts/`)
+  - `.taskmaster/reports/` - Complexity analysis reports (previously `scripts/`)
+  - `.taskmaster/templates/` - Template files like example PRD
+  - `.taskmaster/config.json` - Configuration (previously `.taskmasterconfig`)
+
+  **Migration & Backward Compatibility:**
+
+  - Existing projects continue to work with legacy file locations
+  - New projects use the consolidated structure automatically
+  - Run `task-master migrate` to move existing projects to the new structure
+  - All CLI commands and MCP tools automatically detect and use appropriate file locations
+
+  **Benefits:**
+
+  - Cleaner project root with Task Master files organized in one location
+  - Reduced file scatter across multiple directories
+  - Improved project navigation and maintenance
+  - Consistent file organization across all Task Master projects
+
+  This change maintains full backward compatibility while providing a migration path to the improved structure.
+
+### Patch Changes
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix max_tokens error when trying to use claude-sonnet-4 and claude-opus-4
+
+- [#625](https://github.com/eyaltoledano/claude-task-master/pull/625) [`2d520de`](https://github.com/eyaltoledano/claude-task-master/commit/2d520de2694da3efe537b475ca52baf3c869edda) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix add-task MCP command causing an error
+
+## 0.16.0-rc.0
+
+### Minor Changes
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add AWS bedrock support
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - # Add Google Vertex AI Provider Integration
+
+  - Implemented `VertexAIProvider` class extending BaseAIProvider
+  - Added authentication and configuration handling for Vertex AI
+  - Updated configuration manager with Vertex-specific getters
+  - Modified AI services unified system to integrate the provider
+  - Added documentation for Vertex AI setup and configuration
+  - Updated environment variable examples for Vertex AI support
+  - Implemented specialized error handling for Vertex-specific issues
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add support for Azure
+
+- [#612](https://github.com/eyaltoledano/claude-task-master/pull/612) [`669b744`](https://github.com/eyaltoledano/claude-task-master/commit/669b744ced454116a7b29de6c58b4b8da977186a) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Increased minimum required node version to > 18 (was > 14)
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Renamed baseUrl to baseURL
+
+- [#604](https://github.com/eyaltoledano/claude-task-master/pull/604) [`80735f9`](https://github.com/eyaltoledano/claude-task-master/commit/80735f9e60c7dda7207e169697f8ac07b6733634) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Add TASK_MASTER_PROJECT_ROOT env variable supported in mcp.json and .env for project root resolution
+
+  - Some users were having issues where the MCP wasn't able to detect the location of their project root, you can now set the `TASK_MASTER_PROJECT_ROOT` environment variable to the root of your project.
+
+- [#619](https://github.com/eyaltoledano/claude-task-master/pull/619) [`3f64202`](https://github.com/eyaltoledano/claude-task-master/commit/3f64202c9feef83f2bf383c79e4367d337c37e20) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Consolidate Task Master files into unified .taskmaster directory structure
+
+  This release introduces a new consolidated directory structure that organizes all Task Master files under a single `.taskmaster/` directory for better project organization and cleaner workspace management.
+
+  **New Directory Structure:**
+
+  - `.taskmaster/tasks/` - Task files (previously `tasks/`)
+  - `.taskmaster/docs/` - Documentation including PRD files (previously `scripts/`)
+  - `.taskmaster/reports/` - Complexity analysis reports (previously `scripts/`)
+  - `.taskmaster/templates/` - Template files like example PRD
+  - `.taskmaster/config.json` - Configuration (previously `.taskmasterconfig`)
+
+  **Migration & Backward Compatibility:**
+
+  - Existing projects continue to work with legacy file locations
+  - New projects use the consolidated structure automatically
+  - Run `task-master migrate` to move existing projects to the new structure
+  - All CLI commands and MCP tools automatically detect and use appropriate file locations
+
+  **Benefits:**
+
+  - Cleaner project root with Task Master files organized in one location
+  - Reduced file scatter across multiple directories
+  - Improved project navigation and maintenance
+  - Consistent file organization across all Task Master projects
+
+  This change maintains full backward compatibility while providing a migration path to the improved structure.
+
+### Patch Changes
+
+- [#607](https://github.com/eyaltoledano/claude-task-master/pull/607) [`6a8a68e`](https://github.com/eyaltoledano/claude-task-master/commit/6a8a68e1a3f34dcdf40b355b4602a08d291f8e38) Thanks [@Crunchyman-ralph](https://github.com/Crunchyman-ralph)! - Fix max_tokens error when trying to use claude-sonnet-4 and claude-opus-4
+
+- [#597](https://github.com/eyaltoledano/claude-task-master/pull/597) [`2d520de`](https://github.com/eyaltoledano/claude-task-master/commit/2d520de2694da3efe537b475ca52baf3c869edda) Thanks [@eyaltoledano](https://github.com/eyaltoledano)! - Fix add-task MCP command causing an error
+
 ## 0.15.0
 
 ### Minor Changes
